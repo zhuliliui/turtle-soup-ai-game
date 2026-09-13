@@ -1,0 +1,699 @@
+"""推理判断引擎 - 核心AI系统"""
+from typing import Dict, List, Tuple, Optional
+from models.game_state import GameState, InquiryType, InquiryRecord, Clue
+from ai_host.llm_client import LLMError, extract_json
+import uuid
+import time
+
+
+class ReasoningEngine:
+    """
+    推理判断引擎 - 让AI成为真正的游戏主持人
+
+    核心职责：
+    1. 判断玩家提问的质量和方向
+    2. 计算推理进度
+    3. 决定何时揭示线索
+    4. 评估猜想的准确性
+    5. 检测卡住状态
+    """
+
+    # 流式输出的分隔标记：标记前=玩家可见的主持人台词，标记后=系统用JSON
+    STREAM_MARKER = "<<<SOUP_JSON>>>"
+
+    def __init__(self, llm_client):
+        self.llm = llm_client
+
+    async def process_inquiry(
+        self,
+        game_state: GameState,
+        inquiry_type: InquiryType,
+        content: str
+    ) -> Tuple[str, Dict]:
+        """
+        处理玩家的推理输入
+
+        返回: (AI回应, 状态更新信息)
+        """
+
+        if inquiry_type == InquiryType.QUESTION:
+            return await self._process_question(game_state, content)
+        elif inquiry_type == InquiryType.HYPOTHESIS:
+            return await self._process_hypothesis(game_state, content)
+        elif inquiry_type == InquiryType.VERIFICATION:
+            return await self._process_verification(game_state, content)
+        else:
+            raise ValueError(f"未知的推理类型: {inquiry_type}")
+
+    # ==================== 流式处理（边生成边推送主持人台词） ====================
+
+    async def process_inquiry_stream(self, game_state: GameState, inquiry_type: InquiryType, content: str):
+        """流式处理玩家的推理输入
+
+        异步生成器：先 yield ("delta", 台词增量) 若干次，最后 yield ("final", (ai_response, state_updates))。
+        LLM 输出格式：主持人台词在前，<<<SOUP_JSON>>> 标记后跟系统用JSON。
+        JSON 解析失败抛 LLMError（上层重试，不消耗推理机会）。
+        """
+        if inquiry_type == InquiryType.QUESTION:
+            prompt = self._build_question_stream_prompt(game_state, content)
+        elif inquiry_type == InquiryType.HYPOTHESIS:
+            prompt = self._build_hypothesis_stream_prompt(game_state, content)
+        elif inquiry_type == InquiryType.VERIFICATION:
+            prompt = self._build_verification_stream_prompt(game_state, content)
+        else:
+            raise ValueError(f"未知的推理类型: {inquiry_type}")
+
+        full = ""
+        pushed = 0
+        # 防止部分标记字符（如"<"、"<<")泄漏进台词流：末尾保留 marker长度-1 的字符待确认
+        holdback = len(self.STREAM_MARKER) - 1
+        async for delta in self.llm.generate_stream(prompt):
+            full += delta
+            idx = full.find(self.STREAM_MARKER)
+            if idx >= 0:
+                clean = full[:idx]
+            else:
+                clean = full[:-holdback] if len(full) > holdback else ""
+            if len(clean) > pushed:
+                yield ("delta", clean[pushed:])
+                pushed = len(clean)
+
+        if not full.strip():
+            raise LLMError("AI返回了空内容")
+
+        # 解析标记后的JSON；LLM漏掉标记时从全文兜底提取
+        json_part = full.split(self.STREAM_MARKER, 1)[1] if self.STREAM_MARKER in full else full
+        data = extract_json(json_part) or extract_json(full)
+        if data is None:
+            print(f"[推理引擎] 流式JSON解析失败, 原始响应: {full[:300]}")
+            raise LLMError("AI返回了无法解析的内容，请重试")
+
+        if inquiry_type == InquiryType.QUESTION:
+            answer = str(data.get("answer") or "").strip()
+            # 二元判定保险：非"是"一律按"否"处理（判定反馈只能是或否）
+            if answer not in ("是", "否"):
+                answer = "否"
+            print(f"[推理引擎] answer字段值: '{answer}'")
+
+            state_updates = {
+                "progress_delta": data.get("progress_delta", 0),
+                "revealed_info": [answer],
+                "is_critical": bool(data.get("is_critical", False))
+            }
+
+            if data.get("should_reveal_clue") and game_state.case.hidden_clues:
+                revealed_clue = self._find_and_reveal_clue(game_state, data.get("clue_to_reveal"))
+                if revealed_clue:
+                    state_updates["revealed_clue"] = revealed_clue
+
+            # 权威台词用确定性模板组装（保证判定干净只有是/否，流式文本仅提供打字机效果）
+            ai_response = self._format_question_response(
+                answer=answer,
+                hint="",
+                is_critical=state_updates["is_critical"]
+            )
+            yield ("final", (ai_response, state_updates))
+
+        elif inquiry_type == InquiryType.HYPOTHESIS:
+            dialogue = self._clean_dialogue(full)
+            state_updates = {
+                "progress_delta": data.get("progress_delta", 0),
+                "correctness": data.get("correctness", 0),
+                "revealed_info": []
+            }
+            ai_response = dialogue or self._format_hypothesis_response(data)
+            yield ("final", (ai_response, state_updates))
+
+        else:  # VERIFICATION
+            state_updates = {
+                "case_solved": bool(data.get("is_correct", False)),
+                "game_over": True,
+                "verification_result": data
+            }
+            yield ("final", ("", state_updates))
+
+    def _clean_dialogue(self, full_text: str) -> str:
+        """提取标记前的主持人台词，并截断LLM漏写标记时可能漏出的JSON/代码围栏"""
+        text = full_text.split(self.STREAM_MARKER, 1)[0]
+        for stop in ("```", "\n{"):
+            i = text.find(stop)
+            if i >= 0:
+                text = text[:i]
+        return text.strip()
+
+    def _build_question_stream_prompt(self, game_state: GameState, question: str) -> str:
+        context = self._build_reasoning_context(game_state)
+        return f"""
+你是一个海龟汤游戏的AI主持人。玩家正在推理案件。
+
+**海龟汤游戏规则：主持人对提问只能回答"是"或"否"，不能透露任何细节！**
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+当前已揭示的线索：
+{self._format_clues(game_state.case.revealed_clues)}
+
+玩家的身份：{game_state.user_identity}
+{context}
+玩家的提问："{question}"
+
+你的输出分两部分：
+
+第一部分（玩家可见的主持人台词）：
+- 最多两行：第一行可选一句简短反应（不超过15字，绝不能暗示答案方向），第二行单独一行只写「是」或「否」
+- 判定标准：问题与事实相符→「是」；与事实不符、无法从事实推出、或与案件无关→「否」
+- 除「是」「否」两个词外，不得出现任何判定性或提示性文字
+- **第一部分第二行的「是」/「否」必须与下面JSON中answer字段的值完全一致（同一次判断）**
+
+第二部分（系统数据，玩家不可见）：
+另起一行输出标记 <<<SOUP_JSON>>>，然后输出JSON：
+{{
+    "answer": "是",
+    "is_critical": true,
+    "progress_delta": 15,
+    "reasoning": "内部分析",
+    "should_reveal_clue": false,
+    "clue_to_reveal": ""
+}}
+
+progress_delta 判断标准：
+- 触及真相核心的问题：15-20
+- 方向正确但不够深入：10-15
+- 相关但偏离重点：5-10
+- 无关问题：0-5
+"""
+
+    def _build_hypothesis_stream_prompt(self, game_state: GameState, hypothesis: str) -> str:
+        return f"""
+你是海龟汤主持人。玩家提出了一个推理猜想。
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+已知信息：
+{self._format_clues(game_state.case.revealed_clues)}
+
+玩家的猜想：
+"{hypothesis}"
+
+你的输出分两部分：
+
+第一部分（玩家可见的主持人台词）：
+- 用2-4句话给出引导性反馈：评价猜想方向（接近/有道理/偏差/死胡同），引导下一步思考
+- 不得直接说出真相，不得逐条罗列对错清单
+
+第二部分（系统数据，玩家不可见）：
+另起一行输出标记 <<<SOUP_JSON>>>，然后输出JSON：
+{{
+    "correctness": 65,
+    "feedback": "引导性反馈",
+    "hint_direction": "下一步应该关注什么",
+    "progress_delta": 10
+}}
+"""
+
+    def _build_verification_stream_prompt(self, game_state: GameState, truth_claim: str) -> str:
+        return f"""
+玩家尝试还原完整真相。请严格对比。
+
+正确的真相：
+{self._format_truth(game_state.case.truth)}
+
+玩家还原的真相：
+"{truth_claim}"
+
+你的输出分两部分：
+
+第一部分（玩家可见的判定，严格二元）：
+- 破案成功：只输出「是」—— 你还原了真相（可加一句祝贺，不超过15字）
+- 破案失败：只输出「否」—— 真相并非如此，不得透露任何错误细节或遗漏点
+
+第二部分（系统数据，玩家不可见）：
+另起一行输出标记 <<<SOUP_JSON>>>，然后输出JSON：
+{{
+    "is_correct": true,
+    "completeness": 85,
+    "accuracy": {{
+        "who": true,
+        "what": true,
+        "why": false,
+        "how": true,
+        "twist": false
+    }},
+    "errors": ["错误点1"],
+    "missing": ["遗漏的关键要素1"],
+    "reasoning_path_summary": ["推理路径第1步", "第2步", "第3步"],
+    "key_insights": ["关键洞察1"]
+}}
+
+判断标准：必须包含 who（谁）、what（发生了什么）、why（动机）、how（手法）、twist（反转点）且基本正确、逻辑自洽，才算破案成功。
+"""
+
+    async def _process_question(
+        self,
+        game_state: GameState,
+        question: str
+    ) -> Tuple[str, Dict]:
+        """处理玩家提问"""
+
+        # 构建推理上下文
+        context = self._build_reasoning_context(game_state)
+
+        prompt = f"""
+你是一个海龟汤游戏的AI主持人。玩家正在推理案件。
+
+**海龟汤游戏规则：主持人只能回答"是"或"否"，不能透露细节！**
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+当前已揭示的线索：
+{self._format_clues(game_state.case.revealed_clues)}
+
+玩家的身份：{game_state.user_identity}
+
+玩家的提问："{question}"
+
+你的任务：
+1. 根据案件真相，判断这个问题的答案
+2. **answer字段必须只能是"是"或"否"两种之一（严格二元）：**
+   - "是" - 问题与事实相符
+   - "否" - 问题与事实不符、无法从事实推出，或与案件无关
+3. 评估这个问题是否触及关键点
+4. 计算推理进度增量
+
+**重要：不要在answer字段中添加任何解释，只能是"是"或"否"！**
+
+请以JSON格式回复：
+{{
+    "answer": "是",
+    "is_critical": true,
+    "quality_score": 75,
+    "hint": "",
+    "progress_delta": 15,
+    "reasoning": "内部分析（不会显示给玩家）",
+    "should_reveal_clue": false,
+    "clue_to_reveal": ""
+}}
+
+判断标准：
+- 触及真相核心的问题：quality_score 80-100, progress_delta 15-20
+- 方向正确但不够深入：quality_score 60-79, progress_delta 10-15
+- 相关但偏离重点：quality_score 40-59, progress_delta 5-10
+- 无关问题：quality_score 0-39, progress_delta 0-5
+"""
+
+        response = await self.llm.generate(prompt)
+        analysis = self._parse_json_response(response)
+
+        print(f"[推理引擎] answer字段值: '{analysis.get('answer', '')}'")
+
+        # 根据分析结果更新游戏状态
+        state_updates = {
+            "progress_delta": analysis.get("progress_delta", 0),
+            "revealed_info": [analysis.get("answer", "")],
+            "is_critical": analysis.get("is_critical", False)
+        }
+
+        # 检查是否需要揭示隐藏线索
+        if analysis.get("should_reveal_clue") and game_state.case.hidden_clues:
+            clue_content = analysis.get("clue_to_reveal")
+            revealed_clue = self._find_and_reveal_clue(game_state, clue_content)
+            if revealed_clue:
+                state_updates["revealed_clue"] = revealed_clue
+
+        # 构建主持人风格的回应
+        ai_response = self._format_question_response(
+            answer=analysis.get("answer", ""),
+            hint=analysis.get("hint", ""),
+            is_critical=analysis.get("is_critical", False)
+        )
+
+        return ai_response, state_updates
+
+    async def _process_hypothesis(
+        self,
+        game_state: GameState,
+        hypothesis: str
+    ) -> Tuple[str, Dict]:
+        """评估玩家的猜想"""
+
+        prompt = f"""
+你是海龟汤主持人。玩家提出了一个推理猜想。
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+已知信息：
+{self._format_clues(game_state.case.revealed_clues)}
+
+玩家的猜想：
+"{hypothesis}"
+
+评估要求：
+1. 判断猜想的正确程度（0-100%）
+2. 指出正确的部分
+3. 指出错误或遗漏的部分
+4. 给出引导性反馈（不直接说答案）
+5. 计算推理进度增量
+
+返回JSON：
+{{
+    "correctness": 65,
+    "correct_parts": ["正确的推理点1", "正确的推理点2"],
+    "wrong_parts": ["错误的推理点1"],
+    "missing_parts": ["遗漏的关键点1"],
+    "feedback": "引导性反馈",
+    "progress_delta": 10,
+    "hint_direction": "下一步应该关注什么"
+}}
+"""
+
+        response = await self.llm.generate(prompt)
+        evaluation = self._parse_json_response(response, "猜想评估")
+
+        ai_response = self._format_hypothesis_response(evaluation)
+
+        state_updates = {
+            "progress_delta": evaluation.get("progress_delta", 0),
+            "correctness": evaluation.get("correctness", 0),
+            "revealed_info": evaluation.get("correct_parts", [])
+        }
+
+        return ai_response, state_updates
+
+    async def _process_verification(
+        self,
+        game_state: GameState,
+        truth_claim: str
+    ) -> Tuple[str, Dict]:
+        """验证玩家还原的真相"""
+
+        prompt = f"""
+玩家尝试还原完整真相。请严格对比。
+
+正确的真相：
+{self._format_truth(game_state.case.truth)}
+
+玩家还原的真相：
+"{truth_claim}"
+
+评估标准：
+- 必须包含：who（谁）、what（发生了什么）、why（动机）、how（手法）、twist（反转点）
+- 每个要素都要基本正确
+- 整体逻辑要自洽
+
+返回JSON：
+{{
+    "is_correct": true/false,
+    "completeness": 85,
+    "accuracy": {{
+        "who": true/false,
+        "what": true/false,
+        "why": true/false,
+        "how": true/false,
+        "twist": true/false
+    }},
+    "errors": ["错误点1", "错误点2"],
+    "missing": ["遗漏的关键要素1"],
+    "reasoning_path_summary": ["推理路径第1步", "第2步", "第3步"],
+    "key_insights": ["关键洞察1", "关键洞察2"]
+}}
+
+判断：只有所有核心要素都正确，才算破案成功。
+"""
+
+        response = await self.llm.generate(prompt)
+        verification = self._parse_json_response(response, "真相验证")
+
+        is_correct = verification.get("is_correct", False)
+
+        state_updates = {
+            "case_solved": is_correct,
+            "game_over": True,
+            "verification_result": verification
+        }
+
+        return "", state_updates
+
+    def _find_and_reveal_clue(
+        self,
+        game_state: GameState,
+        clue_content: str
+    ) -> Optional[Clue]:
+        """找到并揭示隐藏线索"""
+
+        if not game_state.case.hidden_clues:
+            return None
+
+        # 使用相似度匹配找到最相关的隐藏线索
+        for clue in game_state.case.hidden_clues:
+            if self._is_similar(clue.content, clue_content):
+                game_state.reveal_clue(clue)
+                return clue
+
+        # 如果没找到完全匹配，揭示第一条未揭示的关键线索
+        for clue in game_state.case.hidden_clues:
+            if clue.critical:
+                game_state.reveal_clue(clue)
+                return clue
+
+        return None
+
+    def _is_similar(self, text1: str, text2: str, threshold: float = 0.6) -> bool:
+        """简单的文本相似度判断"""
+        # 简化版本：检查关键词重叠
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+
+        if not words1 or not words2:
+            return False
+
+        overlap = len(words1 & words2)
+        similarity = overlap / max(len(words1), len(words2))
+
+        return similarity >= threshold
+
+    def check_should_reveal_hidden_clue(
+        self,
+        game_state: GameState
+    ) -> Optional[Clue]:
+        """检查是否应该主动揭示隐藏线索"""
+
+        # 触发条件：
+        # 1. 推理进度达到特定阈值
+        # 2. 玩家卡住
+        # 3. 剩余轮次较少
+
+        if game_state.reasoning_progress >= 50 and game_state.reasoning_progress < 55:
+            # 进度达到50%时揭示一条线索
+            for clue in game_state.case.hidden_clues:
+                if not clue.revealed and clue.critical:
+                    return clue
+
+        if game_state.is_stuck() and game_state.remaining_turns > 3:
+            # 卡住且还有机会时给线索
+            for clue in game_state.case.hidden_clues:
+                if not clue.revealed:
+                    return clue
+
+        if game_state.remaining_turns <= 3 and game_state.reasoning_progress < 70:
+            # 最后几轮但进度不够时给关键线索
+            for clue in game_state.case.hidden_clues:
+                if not clue.revealed and clue.critical:
+                    return clue
+
+        return None
+
+    def _build_reasoning_context(self, game_state: GameState) -> str:
+        """构建推理上下文"""
+        context = f"案件：{game_state.case.title}\n"
+        context += f"推理进度：{game_state.reasoning_progress:.1f}%\n"
+        context += f"剩余轮次：{game_state.remaining_turns}\n"
+
+        if game_state.inquiry_history:
+            context += "\n最近的推理历史：\n"
+            for record in game_state.inquiry_history[-3:]:
+                context += f"- {record.content}\n"
+
+        return context
+
+    def _format_truth(self, truth: Dict) -> str:
+        """格式化真相"""
+        return f"""
+谁：{truth.get('who', '')}
+发生了什么：{truth.get('what', '')}
+动机：{truth.get('why', '')}
+手法：{truth.get('how', '')}
+反转点：{truth.get('twist', '')}
+"""
+
+    def _format_clues(self, clues: List[Clue]) -> str:
+        """格式化线索列表"""
+        if not clues:
+            return "暂无"
+        return "\n".join(f"- {clue.content}" for clue in clues if clue.revealed)
+
+    def _format_question_response(
+        self,
+        answer: str,
+        hint: str,
+        is_critical: bool
+    ) -> str:
+        """格式化提问回应"""
+
+        import random
+
+        if is_critical:
+            intros = ["这个问题很关键。", "你问到了重点。", "这是一个敏锐的观察。"]
+        else:
+            intros = ["关于这个问题...", "让我告诉你...", "答案是..."]
+
+        response = f"{random.choice(intros)}\n\n「{answer}」"
+
+        if hint:
+            response += f"\n\n{hint}"
+
+        return response
+
+    def _format_hypothesis_response(self, evaluation: Dict) -> str:
+        """格式化猜想评估"""
+
+        correctness = evaluation.get("correctness", 0)
+
+        if correctness > 80:
+            intro = "你的推理非常接近真相了。"
+        elif correctness > 50:
+            intro = "你的推理有一定道理，但还不够完整。"
+        elif correctness > 30:
+            intro = "你的推理方向有些偏差。"
+        else:
+            intro = "这个推理可能把你带入了死胡同。"
+
+        feedback = evaluation.get("feedback", "")
+
+        response = f"{intro}\n\n{feedback}"
+
+        if evaluation.get("hint_direction"):
+            response += f"\n\n💡 提示：{evaluation['hint_direction']}"
+
+        return response
+
+    def _parse_json_response(self, response: str, scene: str = "") -> Dict:
+        """解析LLM的JSON响应，失败时抛出LLMError（上层会保留玩家机会并允许重试）"""
+        result = extract_json(response)
+        if result is None:
+            print(f"[推理引擎] {scene}JSON解析失败, 原始响应: {response[:300]}")
+            raise LLMError("AI返回了无法解析的内容，请重试")
+        return result
+
+    async def generate_hint(
+        self,
+        game_state: GameState,
+        hint_type: str = "normal"
+    ) -> str:
+        """生成提示"""
+
+        prompt = self._build_hint_prompt(game_state, hint_type)
+        hint = await self.llm.generate(prompt, max_tokens=800)
+        return hint.strip()
+
+    async def generate_hint_stream(self, game_state: GameState, hint_type: str = "normal"):
+        """流式生成提示：yield ("delta", 文本增量) ... 最后 yield ("final", 完整提示文本)"""
+        prompt = self._build_hint_prompt(game_state, hint_type)
+        full = ""
+        async for delta in self.llm.generate_stream(prompt, max_tokens=800, temperature=0.7):
+            full += delta
+            yield ("delta", delta)
+        if not full.strip():
+            raise LLMError("AI返回了空内容")
+        yield ("final", full.strip())
+
+    def _build_hint_prompt(self, game_state: GameState, hint_type: str = "normal") -> str:
+        """构建提示生成的提示词"""
+
+        if hint_type == "normal":
+            strength = "给出一个方向性的提示，不要泄露具体答案"
+        elif hint_type == "strong":
+            strength = "给出一个更明确的提示，可以指向关键线索"
+        else:
+            strength = "给出一个隐晦的提示"
+
+        prompt = f"""
+玩家在推理中遇到困难。
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+当前进度：{game_state.reasoning_progress:.1f}%
+
+已知线索：
+{self._format_clues(game_state.case.revealed_clues)}
+
+最近推理：
+{self._format_recent_inquiries(game_state.inquiry_history[-3:])}
+
+请{strength}。
+
+提示要求：
+- 不要直接说答案
+- 引导玩家关注被忽略的线索
+- 或者提示一个新的思考角度
+
+直接返回提示文本即可，不要输出JSON或任何标记。
+"""
+        return prompt
+
+    async def generate_ask_person_stream(self, game_state: GameState, content: str):
+        """流式生成「询问他人」回应：以被询问者的口吻透露一条线索
+
+        yield ("delta", 文本增量) ... 最后 yield ("final", 完整回应文本)
+        """
+        prompt = self._build_ask_person_prompt(game_state, content)
+        full = ""
+        async for delta in self.llm.generate_stream(prompt, max_tokens=800, temperature=0.8):
+            full += delta
+            yield ("delta", delta)
+        if not full.strip():
+            raise LLMError("AI返回了空内容")
+        yield ("final", full.strip())
+
+    def _build_ask_person_prompt(self, game_state: GameState, content: str) -> str:
+        """构建「询问他人」的提示词"""
+
+        prompt = f"""
+玩家正在玩海龟汤推理游戏，现在想去打听消息、找人要线索。
+
+玩家身份：{game_state.user_identity}
+玩家的打听内容：{content}
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+案件背景：
+{game_state.case.background}
+
+已知线索：
+{self._format_clues(game_state.case.revealed_clues)}
+
+最近推理：
+{self._format_recent_inquiries(game_state.inquiry_history[-3:])}
+
+任务：
+- 从玩家的打听内容中判断玩家想询问谁（人物/角色）。如果没指明，就选一个与案件最相关的人物
+- 以该人物的第一人称口吻回答玩家，语气符合其身份（如老师、保安、同学、医生……）
+- 根据案件真相，透露一条与真相一致、且符合该人物视角的新情报（不要与已知线索重复）
+- 只透露情报，不要直接说出完整真相或凶手
+- 80字以内，口语化，像真人说话
+- 如果玩家问的问题与案件无关，就以该人物的身份自然地回避
+
+直接返回该人物的说话内容即可，不要输出JSON、旁白或任何标记。
+"""
+        return prompt
+
+    def _format_recent_inquiries(self, records: List[InquiryRecord]) -> str:
+        """格式化最近的推理"""
+        if not records:
+            return "无"
+        return "\n".join(f"- {r.content}" for r in records)
