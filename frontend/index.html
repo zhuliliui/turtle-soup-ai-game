@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="siAVWkKgIPZGJBSiguVfjW">
+<head data-page-node-id="3881UlsR0wGK4KcsjYxjOG">
+    <meta charset="UTF-8" data-page-node-id="fqyt76STbtulgC0vnpNrX1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="TiOpG2j6cHcvdm9BTwgIa7">
+    <title>海龟汤推理游戏</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 data-page-node-id="yGFP49fpb6pdcemEzDLJxc"><text y=%22.9em%22 font-size=%2290%22 data-page-node-id="FSDMyzK7cjjMwDSJMqFd60">🧩</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            /* 浅绿水彩背景图（bg.jpg），加载失败时回退到渐变色 */
+            background: #e6f2e6 url('bg.jpg') no-repeat center center;
+            background-size: cover;
+            color: #2c3e2c;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 顶部状态栏 */
+        .top-bar {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 2px solid #a5d6a7;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 12px rgba(46, 125, 50, 0.08);
+        }
+
+        .case-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1b5e20;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            padding: 8px 15px;
+            background: rgba(46, 125, 50, 0.06);
+            border-radius: 20px;
+            border: 1px solid rgba(46, 125, 50, 0.18);
+            color: #33691e;
+        }
+
+        .status-value {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(46, 125, 50, 0.12);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #66bb6a, #43a047);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px rgba(102, 187, 106, 0.5);
+        }
+
+        /* 主内容区 */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* 中央案件面板 */
+        .case-panel {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            border: 1px solid rgba(46, 125, 50, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(46, 125, 50, 0.08);
+        }
+
+        .case-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .case-section {
+            margin-bottom: 25px;
+            padding: 24px;
+            background: rgba(232, 245, 233, 0.9);
+            border-radius: 10px;
+            border-left: 4px solid #66bb6a;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .section-content {
+            font-size: 17px;
+            line-height: 1.95;
+            color: #33502f;
+        }
+
+        .clue-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(102, 187, 106, 0.13);
+            border-radius: 8px;
+            border-left: 3px solid #66bb6a;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #33502f;
+        }
+
+        .clue-critical {
+            background: rgba(255, 179, 0, 0.16);
+            border-left-color: #f9a825;
+        }
+
+        /* 对话历史区 */
+        .inquiry-history {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* 微信式对话气泡 */
+        .inquiry-history {
+            min-height: 380px;
+            max-height: 68vh;
+            overflow-y: auto;
+            padding: 16px;
+            background: rgba(232, 245, 233, 0.6);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .chat-user {
+            flex-direction: row-reverse;
+        }
+
+        .chat-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            background: #ffffff;
+            border: 1px solid rgba(46, 125, 50, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .chat-bubble {
+            max-width: 78%;
+            padding: 10px 14px;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #33502f;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+
+        .bubble-user {
+            background: linear-gradient(135deg, #9fe26a, #8bd75c);
+            color: #1c3a14;
+            border-radius: 12px 2px 12px 12px;
+            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.15);
+        }
+
+        .bubble-ai {
+            background: #ffffff;
+            border: 1px solid rgba(46, 125, 50, 0.18);
+            border-radius: 2px 12px 12px 12px;
+            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.08);
+        }
+
+        /* 右侧推理面板 */
+        .reasoning-panel {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            border: 1px solid rgba(46, 125, 50, 0.18);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(46, 125, 50, 0.08);
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(232, 245, 233, 0.75);
+            border-radius: 8px;
+        }
+
+        .panel-section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ability-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+        }
+
+        .ability-name {
+            color: #5c6e5c;
+        }
+
+        .ability-value {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .bonus-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255, 179, 0, 0.16);
+            border-radius: 5px;
+            font-size: 13px;
+            color: #a15c00;
+            white-space: pre-wrap;
+        }
+
+        /* 底部操作区 */
+        .action-bar {
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-top: 1px solid rgba(46, 125, 50, 0.15);
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .action-input {
+            flex: 1;
+            padding: 12px 20px;
+            background: #ffffff;
+            border: 1px solid rgba(46, 125, 50, 0.28);
+            border-radius: 25px;
+            color: #2c3e2c;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .action-input:focus {
+            border-color: #66bb6a;
+            box-shadow: 0 0 10px rgba(102, 187, 106, 0.3);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #66bb6a, #43a047);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(67, 160, 71, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(46, 125, 50, 0.08);
+            color: #2e7d32;
+            border: 1px solid rgba(46, 125, 50, 0.22);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(46, 125, 50, 0.16);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef5350, #e53935);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(239, 83, 80, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffca28, #ffb300);
+            color: #5d4037;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(27, 94, 32, 0.35);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #f6fbf4;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid #66bb6a;
+            box-shadow: 0 10px 50px rgba(46, 125, 50, 0.25);
+            color: #2c3e2c;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* 启动界面 */
+        .start-screen {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .start-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            background: #ffffff;
+            border: 1px solid rgba(46, 125, 50, 0.28);
+            border-radius: 8px;
+            color: #2c3e2c;
+            font-size: 14px;
+        }
+
+        .form-textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(46, 125, 50, 0.08);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 187, 106, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 187, 106, 0.7);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            padding: 20px 30px;
+            background: rgba(67, 160, 71, 0.95);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(46, 125, 50, 0.3);
+            animation: slideIn 0.3s ease;
+            z-index: 2000;
+            max-width: 420px;
+            white-space: pre-wrap;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* AI打字气泡的思考动画 */
+        .typing-dots {
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .typing-dots i {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #8fa98f;
+            animation: typingBlink 1.2s infinite;
+        }
+        .typing-dots i:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots i:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBlink {
+            0%, 80%, 100% { opacity: 0.25; }
+            40% { opacity: 1; }
+        }
+
+        /* 身份行动卡片 */
+        .action-card {
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid #c8dcc8;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #2e4a2e;
+            font-family: inherit;
+        }
+        .action-card:hover:not(:disabled) {
+            border-color: #66bb6a;
+            background: #ffffff;
+        }
+        .action-card:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #66bb6a;
+            border-radius: 20px;
+            color: #2e7d32;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .upload-btn:hover {
+            background: #66bb6a;
+            color: #ffffff;
+        }
+        .upload-btn:active {
+            transform: scale(0.96);
+        }
+        /* 个人资料悬浮卡（开始页右侧，进入游戏自动隐藏） */
+        #profileFab {
+            position: fixed;
+            right: 48px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 7px;
+            padding: 22px 28px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #66bb6a;
+            border-radius: 20px;
+            box-shadow: 0 6px 24px rgba(46, 125, 50, 0.25);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            /* 必须高于 .modal 遮罩(1000)，否则会被遮罩盖住变模糊且点不到 */
+            z-index: 1001;
+        }
+        #profileFab:hover {
+            transform: translateY(-50%) scale(1.06);
+            border-color: #66bb6a;
+        }
+        #profileFab .fab-icon { font-size: 36px; }
+        #profileFab .fab-level {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            background: #66bb6a;
+            padding: 3px 14px;
+            border-radius: 14px;
+        }
+        #profileFab .fab-text { font-size: 15px; color: #2e7d32; font-weight: 700; }
+        #startModal:not(.active) ~ #profileFab { display: none; }
+        /* 询问他人弹窗：人物选择chip */
+        .person-chip {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1.5px solid #c8dcc8;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #2e4a2e;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-weight: 600;
+            user-select: none;
+        }
+        .person-chip:hover { border-color: #66bb6a; }
+        .person-chip.selected {
+            background: #66bb6a;
+            border-color: #66bb6a;
+            color: #ffffff;
+        }
+        @media (max-width: 1150px) {
+            #profileFab {
+                right: 14px;
+                top: auto;
+                bottom: 18px;
+                transform: none;
+                padding: 10px 14px;
+                border-radius: 14px;
+            }
+            #profileFab:hover { transform: scale(1.06); }
+            #profileFab .fab-icon { font-size: 22px; }
+        }
+    </style>
+</head>
+<body data-page-node-id="OdIevaQo751o0qp1rbcAfr">
+    <!-- 启动模态框 -->
+    <div id="startModal" class="modal active" data-page-node-id="FwEUJsPMHHba8ASV8wmD4P">
+        <div class="modal-content" data-page-node-id="0z4WSjuD33rKVkIcFOT5NK">
+            <div class="start-screen" data-page-node-id="RTu3q7bqFJdLfSBwSwrHHq">
+                <h1 class="start-title" data-page-node-id="9kQU4WqcSrZ3ASjNY1nyH4">🧩 海龟汤推理游戏</h1>
+                <p style="color: #5c6e5c; margin-bottom: 24px;" data-page-node-id="ukv39eslNiT7XchAhMwcdU">知识 × 推理 × 成长</p>
+
+                <!-- 知乎账号（黑客松 OAuth 接入；未配置凭证时为演示模式） -->
+                <div id="zhihuBar" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.75); border: 1px solid rgba(46,125,50,0.18); border-radius: 12px; margin-bottom: 22px;">
+                    <div id="zhihuAvatar" style="width: 34px; height: 34px; border-radius: 50%; background: #e8f0e8; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; overflow: hidden;">知乎</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="zhihuName" style="font-size: 14px; font-weight: 700; color: #2e4a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">未登录知乎</div>
+                        <div id="zhihuHint" style="font-size: 12px; color: #7c8b7c; margin-top: 1px;">登录后可在作品页展示账号身份</div>
+                    </div>
+                    <button id="zhihuLoginBtn" class="btn" onclick="zhihuLogin()" style="padding: 7px 14px; background: #0066ff; border: none; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;">登录知乎</button>
+                    <button id="zhihuLogoutBtn" class="btn hidden" onclick="zhihuLogout()" style="padding: 7px 14px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; color: #5c6e5c; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;">退出</button>
+                </div>
+
+                <!-- 开局方式：二选一 -->
+                <div class="form-group">
+                    <label class="form-label">🎯 开局方式（二选一）</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 4px;">
+                        <button type="button" id="tabSentence" onclick="switchStartMode('sentence')" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #66bb6a; background: #e8f5e9; color: #2e7d32;">🎭 一句话开局</button>
+                        <button type="button" id="tabStory" onclick="switchStartMode('story')" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #d5e0d5; background: rgba(255,255,255,0.8); color: #7c8b7c;">📖 知乎故事改编</button>
+                    </div>
+                </div>
+
+                <div id="sentencePanel">
+                    <!-- 一句话开局（身份+事件写在一句话里，如"我是一个学生"或"小明昨晚失踪了。我是他的老师"） -->
+                    <div class="form-group" data-page-node-id="quickStartGroup">
+                        <input type="text" id="quickSentence" class="form-input" style="width: 100%;" placeholder="例如：我是一个学生　或　小明昨晚失踪了。我是他的老师" maxlength="200">
+                        <p style="color: #7c8b7c; font-size: 13px; margin-top: 8px;">一句话说明你的身份和事件即可，只写身份（如"我是一个学生"）也可以；填好后点下方「开始游戏」</p>
+                    </div>
+                </div>
+
+                <div id="storyPanel" class="hidden">
+                    <button id="zhihuStoryBtn" class="btn" onclick="openZhihuStories()" style="width: 100%; padding: 12px; background: rgba(0,102,255,0.08); border: 1px solid rgba(0,102,255,0.35); color: #0052cc; border-radius: 10px; font-size: 14px; font-weight: 600;">
+                        📖 选择一个知乎故事
+                    </button>
+                    <div id="zhihuAttribution" class="hidden" style="margin-top: 10px; padding: 8px 12px; background: rgba(0,102,255,0.06); border-radius: 8px; color: #0052cc; font-size: 12px; text-align: center;"></div>
+                    <p style="color: #7c8b7c; font-size: 13px; margin-top: 8px;">AI 把知乎故事改编成可推理的汤面（不剧透原文），娱乐/学习模式均可选；学习模式下学习材料仍由你在下方自行提供</p>
+                </div>
+
+                <div class="form-group" data-page-node-id="WlZgsjI5plxwtSCyxBw3uH">
+                    <label class="form-label" data-page-node-id="QjFblZeVZQAvh8GSyBzMKC">游戏模式</label>
+                    <select id="modeSelect" class="form-select" data-page-node-id="RMG1n1TdDFLzwzBo1uPzJJ">
+                        <option value="entertainment" data-page-node-id="KdrrAonrYRqYXNhFhAtzlN">娱乐模式 - 纯推理体验</option>
+                        <option value="learning" data-page-node-id="202ujoU5JQxspBoozNRIlN">学习模式 - 答题获得增益</option>
+                    </select>
+                </div>
+
+                <div id="learningOptions" class="hidden" data-page-node-id="08TfBo14FfBwW5hu7AIT9j">
+                    <div class="form-group" data-page-node-id="yow57evnCWfqmRh4ILQbTg">
+                        <label class="form-label" data-page-node-id="M8mxto6oDLeUmh5dPNCFsF">学科</label>
+                        <input type="text" id="subjectInput" class="form-input" placeholder="例如：生物、物理、历史..." data-page-node-id="Qr28m2qWnrBtxNA7fyeWU8">
+                    </div>
+                    <div class="form-group" data-page-node-id="GBLRX6ASY8lyqxsyHt4xh5">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label class="form-label" style="margin-bottom: 0;" data-page-node-id="23hxPI0gDyzgoiO7DVcErr">学习材料</label>
+                            <label for="learningFile" class="upload-btn" data-page-node-id="learningUploadBtn">📎 上传PDF/文件</label>
+                            <input type="file" id="learningFile" accept=".pdf,.txt,.md" style="display: none;" onchange="uploadLearningFile(this)" data-page-node-id="learningFileInput">
+                        </div>
+                        <textarea id="learningContent" class="form-textarea" placeholder="直接粘贴你的学习材料，或点右上角「上传PDF/文件」..."></textarea>
+                        <p id="uploadHint" class="hidden" style="color: #2e7d32; font-size: 13px; margin-top: 6px;"></p>
+                    </div>
+                </div>
+
+                <button id="startBtn" class="btn btn-primary" data-start-btn onclick="startGame()" style="width: 100%; margin-top: 14px; padding: 15px;" data-page-node-id="qahK9RvcaAfpT1qZadGsO1">
+                    开始游戏
+                </button>
+
+                <div id="startStatus" class="hidden" style="margin-top: 14px; padding: 10px 14px; background: rgba(102, 187, 106, 0.12); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-size: 14px; text-align: center;"></div>
+
+                <button id="resumeBtn" class="btn hidden" onclick="resumeGame()" style="width: 100%; margin-top: 12px; padding: 13px; background: rgba(255,255,255,0.8); border: 1px solid #66bb6a; color: #2e7d32; border-radius: 10px; font-size: 15px; font-weight: 600;">
+                    <span id="resumeLabel">▶️ 继续上局</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人资料悬浮入口（开始页右侧空白区，进入游戏自动隐藏） -->
+    <div id="profileFab" onclick="openProfile()" data-page-node-id="profileFab">
+        <div class="fab-icon">👤</div>
+        <div class="fab-level" id="profileFabLevel">Lv.1</div>
+        <div class="fab-text">个人资料</div>
+    </div>
+
+    <!-- 个人资料弹窗 -->
+    <div id="profileModal" class="modal" data-page-node-id="profileModal">
+        <div class="modal-content" style="max-width: 580px;">
+            <div class="start-screen">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h1 class="start-title" style="font-size: 24px; margin: 0;">👤 个人资料</h1>
+                    <button class="btn" onclick="closeProfile()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 16px; padding: 18px; background: rgba(102,187,106,0.12); border: 1px solid #c8dcc8; border-radius: 14px; margin-bottom: 16px;">
+                    <div style="font-size: 38px;">🏆</div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 26px; font-weight: 800; color: #2e7d32;" id="profileLevelBig">Lv.1</div>
+                        <div style="color: #5c6e5c; font-size: 13px; margin-top: 4px;">成功推理 +1 级 · 失败 -1 级（最低 Lv.1）</div>
+                    </div>
+                    <div style="text-align: right; color: #2e7d32; font-size: 14px; font-weight: 600; line-height: 1.6;" id="profileStats">胜 0 · 负 0<br>胜率 0%</div>
+                </div>
+
+                <div style="font-weight: 700; color: #2e7d32; margin-bottom: 8px;">📋 完成的案件</div>
+                <div id="profileRecords" style="max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 知乎故事改编：故事列表弹窗 -->
+    <div id="zhihuStoryModal" class="modal">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="start-screen">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h1 class="start-title" style="font-size: 22px; margin: 0;">📖 知乎故事改编汤面</h1>
+                    <button class="btn" onclick="closeZhihuStories()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
+                </div>
+                <p style="color: #5c6e5c; font-size: 13px; margin-bottom: 14px;">选一个知乎故事（黑客松内容接口），AI 把它改编成可推理的海龟汤案件；原故事仅作素材，开局汤面不会剧透原文。</p>
+                <div id="zhihuStoryList" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;">
+                    <p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 询问他人弹窗：选人物 + 输入问题 -->
+    <div id="askPersonModal" class="modal" data-page-node-id="askPersonModal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="start-screen">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h1 class="start-title" style="font-size: 22px; margin: 0;">🗣 询问他人</h1>
+                    <button class="btn" onclick="closeAskPerson()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
+                </div>
+                <p style="color: #5c6e5c; font-size: 13px; margin-bottom: 14px;">选一个你想打听的人，再写下问题，对方会以第一人称告诉你一条线索。<b style="color:#c62828;">消耗 1 次推理机会</b></p>
+
+                <div class="form-group">
+                    <label class="form-label">👤 想询问谁？</label>
+                    <div id="askPersonChips" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    <input type="text" id="askPersonCustom" class="form-input" style="margin-top: 10px;" placeholder="或自己输入人物称呼，如：物业前台" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">💬 想问什么？</label>
+                    <textarea id="askPersonQuestion" class="form-textarea" style="min-height: 80px;" placeholder="例如：最后一次见到小明是什么时候？他当时状态怎么样？" maxlength="200"></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitAskPerson()" style="width: 100%; padding: 14px;">🗣 去询问</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="gameScreen" class="hidden" data-page-node-id="et3iBvRYYAHWN9amK07C9r">
+        <!-- 顶部状态栏 -->
+        <div class="top-bar" data-page-node-id="9oHGsUmLc1dK48RnpmbHEP">
+            <div class="case-title" id="caseTitle" data-page-node-id="mhp9OQ7PENvRmMRqDSepIG">载入中...</div>
+            <div class="status-indicators" data-page-node-id="hoKKLSVvxZs0HGNpZZYING">
+                <div class="status-item" data-page-node-id="RFj8jUvFaSGQ7OA10ZWccA">
+                    <span data-page-node-id="DuNC3sg9QmSNGzHmjAdy0S">🎯 剩余推理</span>
+                    <span class="status-value" id="remainingTurns" data-page-node-id="EcwOLbG26yVdPOks23DnZr">10</span>
+                </div>
+                <div class="status-item" data-page-node-id="HmJGUqGlZjfWjiRwxPAx6l">
+                    <span data-page-node-id="E1PvHEUJsFKxeiCdfwh6BT">📊 推理进度</span>
+                    <div class="progress-bar" data-page-node-id="XqQCVWepBhSwHydm71AhnN">
+                        <div class="progress-fill" id="progressFill" style="width: 0%" data-page-node-id="3dTwoxiGAMaFZMRBkgeiz1"></div>
+                    </div>
+                    <span class="status-value" id="progressText" data-page-node-id="PUaSwNDMNCKpDohE60narB">0%</span>
+                </div>
+                <div class="status-item" data-page-node-id="CMqBoQAFA6hltzzAtn80H9">
+                    <span data-page-node-id="N3P4gYjmgRuDfqvmW1iIRZ">🧠 推理等级</span>
+                    <span class="status-value" id="reasoningLevel" data-page-node-id="pdgGvB14x7sUw1YIQu1GtD">Lv.1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-container" data-page-node-id="oyDcMCig3wa1gNtm77kl7R">
+            <!-- 中央案件面板 -->
+            <div class="case-panel" data-page-node-id="ZAlTy4OjvkFwW2pP1NW4Q6">
+                <div class="case-content" id="caseContent" data-page-node-id="jbxiiUIOYSqmwq2ev2gect">
+                    <div class="case-section" data-page-node-id="Aoamzy1SEPR1Erj8sJnuAE">
+                        <div class="section-title" data-page-node-id="wEB8XA4fSOozI5nAaxi5RU">📋 案件背景</div>
+                        <div class="section-content" id="caseBackground" data-page-node-id="ff7Tcz4ARKUFSua3zJFvEK">正在生成案件...</div>
+                    </div>
+
+                    <div class="case-section" data-page-node-id="cF1SK4gBDVT9yw4w9OeBmd">
+                        <div class="section-title" data-page-node-id="DmsHHQXrusbpwLHCnE2xYW">🔍 现场情况</div>
+                        <div class="section-content" id="sceneDescription" data-page-node-id="92HEevo3aaO7p3GGgVN6vp">-</div>
+                    </div>
+
+                    <div class="case-section" data-page-node-id="GspbwL0dBoU0zAErNckGEx">
+                        <div class="section-title" data-page-node-id="Q89kejvY6xlaBD3nbmuV1n">💬 推理历史</div>
+                        <div class="inquiry-history" id="inquiryHistory" data-page-node-id="HPgkR85YyzrbRrOs7m3BSc">
+                            <p id="historyPlaceholder" style="color: #7c8b7c; font-size: 14px; text-align: center;" data-page-node-id="gT5dmcAx16cdnzbPWxa5l8">你的推理对话将显示在这里...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部操作区 -->
+                <div class="action-bar" data-page-node-id="kTDPVxdSvdhfEdwENML94p">
+                    <div class="input-area" data-page-node-id="rTyxOn4xBV3tX7wVBn6Hcb">
+                        <input type="text" id="actionInput" class="action-input" placeholder="输入你的问题或猜想..." data-page-node-id="UZOvWQMDe5MFVkSFUD8Suy" />
+                    </div>
+                    <div class="action-buttons" data-page-node-id="N3RD7iNALvFvtQ209G540W">
+                        <button class="btn btn-primary" data-action-btn onclick="askQuestion()" data-page-node-id="rj3hYdE9hWRQUEPldMqe04">💬 提问</button>
+                        <button class="btn btn-secondary" data-action-btn onclick="makeHypothesis()" data-page-node-id="kYNGbOPYRO01HE5QNEAjY4">🤔 提出猜想</button>
+                        <button class="btn btn-danger" data-action-btn onclick="verifyTruth()" data-page-node-id="lhXTgtrE3ZajRu8VY8GRqM">✅ 还原真相</button>
+                        <button class="btn btn-secondary" data-action-btn onclick="askSomeone()" data-page-node-id="lpJGqO0NB4tM8xCzQhY7DB">🗣 询问他人</button>
+                        <button id="learningBtn" class="btn btn-warning hidden" data-action-btn onclick="startLearningChallenge()" data-page-node-id="hZoo4UD5Jad5sACX8XNV4z">📚 学习挑战</button>
+                        <button id="restartBtn" class="btn btn-primary hidden" onclick="location.reload()" data-page-node-id="J9Phs5lXVf8PqeFA6DB8yU">🔄 再来一局</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧推理面板 -->
+            <div class="reasoning-panel" data-page-node-id="7mtca1UOPQkYvd4nqTq3Lh">
+                <div class="panel-section" data-page-node-id="cluesPanelSection">
+                    <div class="panel-section-title" data-page-node-id="cluesPanelTitle">💡 已知线索</div>
+                    <div id="cluesList">-</div>
+                </div>
+
+                <div class="panel-section hidden" id="identityActionsSection">
+                    <div class="panel-section-title">🎭 身份行动 <span style="font-size:11px; color:#7c8b7c; font-weight:400;">仅你的身份可执行 · 消耗1次推理机会</span></div>
+                    <div id="actionsList"></div>
+                </div>
+
+                <div class="panel-section" data-page-node-id="GIary7EKQdumMmeXGXVHBU">
+                    <div class="panel-section-title" data-page-node-id="5ZDYawkTpEeS7GRI5KV4Do">🧠 推理能力</div>
+                    <div class="ability-item" data-page-node-id="udjaOTUtivVefQ3pjNtihR">
+                        <span class="ability-name" data-page-node-id="iFMBHdoK6Mjm5WXLSRwWf3">观察力</span>
+                        <span class="ability-value" id="abilityObservation" data-page-node-id="X0oQxVGT8Gwp7ACvTSZCAw">Lv.1</span>
+                    </div>
+                    <div class="ability-item" data-page-node-id="vnMjYd2IboAMpbvGoyGgTL">
+                        <span class="ability-name" data-page-node-id="iQtSxOQzhsQOs32bEA2BHp">逻辑力</span>
+                        <span class="ability-value" id="abilityLogic" data-page-node-id="RbK0n0dT4sL8qK4He4YoEd">Lv.1</span>
+                    </div>
+                    <div class="ability-item" data-page-node-id="j73M0sPiQcptlCrYXbI3Ym">
+                        <span class="ability-name" data-page-node-id="VUNViLv3npyHaJxIGttpiL">联想力</span>
+                        <span class="ability-value" id="abilityAssociation" data-page-node-id="xeNiXzVumQImTGFC8WAta5">Lv.1</span>
+                    </div>
+                    <div class="ability-item" data-page-node-id="jYimnIrUPYGnQzp8Lnv1EE">
+                        <span class="ability-name" data-page-node-id="Bx5z9RbB0OXfm24Ugy2zIq">知识力</span>
+                        <span class="ability-value" id="abilityKnowledge" data-page-node-id="oVS9FqHECjxMEJF3eI9EEJ">Lv.1</span>
+                    </div>
+                </div>
+
+                <div class="panel-section" data-page-node-id="k98xfPuZJka4Om1LlY6L2T">
+                    <div class="panel-section-title" data-page-node-id="tEdiprhQMQEIahrUQBGi0o">✨ 当前增益</div>
+                    <div id="bonusesList" data-page-node-id="vpzX46MaGmqiKWAifFVAVb">
+                        <p style="color: #777; font-size: 13px;" data-page-node-id="CoI1yMrVtIiFSOTmXyEiNq">暂无增益</p>
+                    </div>
+                </div>
+
+                <div class="panel-section" data-page-node-id="oyaZjiqMhI6DgGdZ9M9YUO">
+                    <div class="panel-section-title" data-page-node-id="IEGiGIldyVwKWJLDNxSbsv">❓ 待解谜团</div>
+                    <div id="mysteriesList" data-page-node-id="Qem807tqD8A7feYtpPck9l">
+                        <p style="color: #777; font-size: 13px;" data-page-node-id="fEfNyNYJqymvjAB5iywx6A">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学习挑战模态框 -->
+    <div id="exerciseModal" class="modal" data-page-node-id="fVzbiOtcRU9PNeVgQe1VBn">
+        <div class="modal-content" data-page-node-id="CPU9uwG4jeF41LZ3uZ0mar">
+            <div class="modal-title" data-page-node-id="ZDxyeneBZkwEp3yNMq0Zb5">📚 学习挑战</div>
+            <div id="exerciseIntro" style="color:#b0b0b0; margin-bottom:15px; white-space:pre-wrap;" data-page-node-id="cHYNKCd0oKZYozovverYzI"></div>
+            <div class="form-group" data-page-node-id="rZqmKFNUlJsAPq7ayY2OEa">
+                <label class="form-label" id="exerciseQuestion" style="line-height:1.6;" data-page-node-id="nKoWdvhqMwz0dI4AufNDlB"></label>
+                <div id="exerciseOptions" style="margin-top:12px;" data-page-node-id="ygFvkEKJyvEdUEGTloTBRi"></div>
+                <textarea id="exerciseTextAnswer" class="form-textarea hidden" style="min-height:100px; margin-top:12px;" placeholder="输入你的答案..."></textarea>
+            </div>
+            <button class="btn btn-primary" id="exerciseSubmitBtn" onclick="submitExerciseAnswer()" style="width:100%; margin-top:10px; padding:12px;" data-page-node-id="1j62cYNrmXodDO1AZhcCPg">提交答案</button>
+        </div>
+    </div>
+
+    <script>
+        // API基址：后端托管/公网HTTPS访问时同源；本地8080静态开发时回退 localhost:8000
+        const API_BASE = (location.protocol === 'https:' || location.port === '8000')
+            ? location.origin : 'http://localhost:8000';
+        let currentGameId = null;
+        let currentMode = 'entertainment';
+        let currentExercise = null;
+        let busy = false; // 防止LLM响应期间重复点击导致重复消耗推理机会
+
+        // 统一设置按钮忙碌状态
+        function setBusy(isBusy) {
+            busy = isBusy;
+            document.querySelectorAll('[data-action-btn]').forEach(btn => {
+                btn.disabled = isBusy;
+            });
+        }
+
+        // 统一提取后端错误信息
+        function getErrorText(result) {
+            if (!result) return '未知错误';
+            return result.error || result.detail || (typeof result === 'string' ? result : '操作失败');
+        }
+
+        // 监听模式选择
+        document.getElementById('modeSelect').addEventListener('change', (e) => {
+            const learningOptions = document.getElementById('learningOptions');            if (e.target.value === 'learning') {
+                learningOptions.classList.remove('hidden');
+            } else {
+                learningOptions.classList.add('hidden');
+            }
+        });
+
+        // SSE 流解析：把 fetch 的流式响应按事件分发给 handlers
+        async function consumeSSE(response, handlers) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buf = '';
+
+            const dispatch = (chunk) => {
+                for (const line of chunk.split('\n')) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data:')) continue;
+                    try {
+                        const ev = JSON.parse(trimmed.slice(5).trim());
+                        if (handlers[ev.type]) handlers[ev.type](ev);
+                    } catch (e) { /* 忽略无法解析的行 */ }
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                let idx;
+                while ((idx = buf.indexOf('\n\n')) >= 0) {
+                    const chunk = buf.slice(0, idx);
+                    buf = buf.slice(idx + 2);
+                    dispatch(chunk);
+                }
+            }
+            if (buf.trim()) dispatch(buf);
+        }
+
+        // 创建AI"打字中"气泡，返回可增量写入的控制器
+        function addTypingBubble() {
+            const historyDiv = document.getElementById('inquiryHistory');
+            const placeholder = document.getElementById('historyPlaceholder');
+            if (placeholder) placeholder.remove();
+
+            const row = document.createElement('div');
+            row.className = 'chat-row chat-ai';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'chat-avatar';
+            avatar.textContent = '🧩';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble bubble-ai';
+            bubble.innerHTML = '<span class="typing-dots"><i></i><i></i><i></i></span>';
+
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            historyDiv.appendChild(row);
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            const DOTS = '<span class="typing-dots"><i></i><i></i><i></i></span>';
+            let text = '';
+            const render = () => {
+                bubble.textContent = text;
+                historyDiv.scrollTop = historyDiv.scrollHeight;
+            };
+            return {
+                appendText(t) { text += t; render(); },
+                setText(t) { text = t; render(); },
+                clear() { text = ''; bubble.innerHTML = DOTS; historyDiv.scrollTop = historyDiv.scrollHeight; },
+                remove() { row.remove(); }
+            };
+        }
+
+        // 统一处理行动结果（流式/非流式共用）
+        function applyActionData(data, aiBubble) {
+            if (!data) { aiBubble.remove(); return; }
+
+            const mainText = data.ai_response
+                || (data.hint ? `💡 提示：${data.hint}` : '')
+                || data.message
+                || '（主持人没有回应）';
+            aiBubble.setText(mainText);
+
+            if (data.clue_message) {
+                addInquiryToHistory('ai', data.clue_message);
+            }
+
+            if (data.stuck_hint) {
+                showNotification(data.stuck_hint, 'warning');
+            }
+
+            if (data.game_state) {
+                updateGameState(data.game_state);
+                if (data.game_state.case) {
+                    updateClues(data.game_state.case.revealed_clues);
+                }
+            }
+
+            if (data.game_over) {
+                if (data.case_solved) {
+                    showNotification('🎉 恭喜破案！', 'success');
+                }
+                if (data.game_over_message) {
+                    addInquiryToHistory('ai', data.game_over_message);
+                }
+                endGameUI();
+            }
+        }
+
+        // ==================== 开局方式（二选一） ====================
+        let startMode = 'sentence';       // 'sentence' 一句话开局 | 'story' 知乎故事改编
+        let zhihuPending = null;          // 已选故事 {premise, attribution, title}
+
+        function switchStartMode(m) {
+            startMode = m;
+            const activeStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #66bb6a; background: #e8f5e9; color: #2e7d32;';
+            const idleStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #d5e0d5; background: rgba(255,255,255,0.8); color: #7c8b7c;';
+            document.getElementById('tabSentence').style.cssText = (m === 'sentence') ? activeStyle : idleStyle;
+            document.getElementById('tabStory').style.cssText = (m === 'story') ? activeStyle : idleStyle;
+            document.getElementById('sentencePanel').classList.toggle('hidden', m !== 'sentence');
+            document.getElementById('storyPanel').classList.toggle('hidden', m !== 'story');
+            // 两种开局方式均支持娱乐/学习模式，不做锁定
+        }
+
+        // 开始游戏（流式：实时显示生成进度；失败自动回退老接口）
+        async function startGame() {
+            // 防重入：案件生成需要10-30秒，期间禁止重复点击，保证一局只生成一个案件
+            if (busy) {
+                showNotification('正在生成案件，请耐心等待，不要重复点击', 'warning');
+                return;
+            }
+
+            // 按开局方式取 premise：一句话输入 / 已选知乎故事
+            let sentence;
+            if (startMode === 'story') {
+                if (!zhihuPending) {
+                    showNotification('请先点「选择一个知乎故事」挑选故事', 'error');
+                    return;
+                }
+                sentence = zhihuPending.premise;
+            } else {
+                sentence = document.getElementById('quickSentence').value.trim();
+                if (!sentence) {
+                    showNotification('请输入一句话开局，例如：我是一个学生', 'error');
+                    return;
+                }
+            }
+
+            const mode = document.getElementById('modeSelect').value;
+            currentMode = mode;
+
+            const payload = { premise: sentence, mode: mode };
+
+            if (mode === 'learning') {
+                payload.subject = document.getElementById('subjectInput').value.trim();
+                payload.learning_content = document.getElementById('learningContent').value.trim();
+
+                if (!payload.learning_content) {
+                    showNotification('学习模式需要提供学习材料', 'error');
+                    return;
+                }
+            }
+
+            const startBtns = document.querySelectorAll('[data-start-btn]');
+            const statusEl = document.getElementById('startStatus');
+
+            try {
+                setBusy(true);
+                startBtns.forEach(b => b.disabled = true);
+                statusEl.classList.remove('hidden');
+                statusEl.textContent = '⏳ 正在连接后端...';
+
+                const response = await fetch(`${API_BASE}/api/game/start/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok || !response.body) throw new Error('stream unavailable');
+
+                let finalResult = null;
+                let errMsg = null;
+                await consumeSSE(response, {
+                    status: (ev) => { statusEl.textContent = ev.text; },
+                    final: (ev) => { finalResult = ev.data; },
+                    error: (ev) => { errMsg = ev.message; }
+                });
+
+                if (errMsg) {
+                    showNotification(errMsg, 'error');
+                    return;
+                }
+                if (!finalResult) {
+                    showNotification('案件生成失败，请重试', 'error');
+                    return;
+                }
+
+                currentGameId = finalResult.game_id;
+
+                // 隐藏启动界面，显示游戏界面
+                document.getElementById('startModal').classList.remove('active');
+                document.getElementById('gameScreen').classList.remove('hidden');
+
+                // 显示案件信息
+                displayCaseInfo(finalResult);
+
+                // 清空一句话输入，方便下次开局
+                document.getElementById('quickSentence').value = '';
+
+                // 如果是学习模式，显示学习按钮
+                if (mode === 'learning') {
+                    document.getElementById('learningBtn').classList.remove('hidden');
+                }
+
+                showNotification('案件已生成，开始推理！', 'success');
+            } catch (error) {
+                console.warn('流式开局不可用，回退普通接口', error);
+                await legacyStartGame(payload);
+            } finally {
+                setBusy(false);
+                startBtns.forEach(b => b.disabled = false);
+                statusEl.classList.add('hidden');
+            }
+        }
+
+        // 老版非流式开局（兜底）
+        async function legacyStartGame(payload) {
+            try {
+                const response = await fetch(`${API_BASE}/api/game/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => null);
+
+                if (result && result.success) {
+                    currentGameId = result.data.game_id;
+                    document.getElementById('startModal').classList.remove('active');
+                    document.getElementById('gameScreen').classList.remove('hidden');
+                    displayCaseInfo(result.data);
+                    document.getElementById('quickSentence').value = '';
+                    if (payload.mode === 'learning') {
+                        document.getElementById('learningBtn').classList.remove('hidden');
+                    }
+                    showNotification('案件已生成，开始推理！', 'success');
+                } else {
+                    showNotification(getErrorText(result), 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showNotification('服务器连接失败，请确保后端已启动', 'error');
+            }
+        }
+
+        // 显示案件信息
+        function displayCaseInfo(data) {
+            const gameState = data.game_state;
+            const case_info = gameState.case;
+
+            // 缓存本案件可询问的人物（询问他人弹窗用）
+            window._askablePeople = case_info.askable_people || [];
+
+            document.getElementById('caseTitle').textContent = case_info.title;
+            document.getElementById('caseBackground').textContent = case_info.background;
+            document.getElementById('sceneDescription').textContent = case_info.scene_description;
+
+            updateClues(case_info.revealed_clues);
+            updateMysteries(case_info.mysteries);
+            updateGameState(gameState);
+        }
+
+        // 更新线索
+        function updateClues(clues) {
+            const cluesList = document.getElementById('cluesList');
+            if (clues.length === 0) {
+                cluesList.innerHTML = '<p style="color: #777;">暂无线索</p>';
+                return;
+            }
+
+            cluesList.innerHTML = clues.map(clue => `
+                <div class="clue-item ${clue.critical ? 'clue-critical' : ''}">
+                    ${clue.critical ? '⭐ ' : '📌 '}${clue.content}
+                    ${clue.perspective ? `<div style="color: #7c8b7c; font-size: 12px; margin-top: 3px; line-height: 1.5;">👁 ${clue.perspective}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // 更新谜团
+        function updateMysteries(mysteries) {
+            const mysteriesList = document.getElementById('mysteriesList');
+            if (mysteries.length === 0) {
+                mysteriesList.innerHTML = '<p style="color: #777;">暂无</p>';
+                return;
+            }
+
+            mysteriesList.innerHTML = mysteries.map(m => `
+                <div style="padding: 6px 0; color: #d32f2f; font-size: 14px; font-weight: 500; line-height: 1.6;">❓ ${m}</div>
+            `).join('');
+        }
+
+        // 更新游戏状态
+        function updateGameState(state) {
+            if (!state || !state.ability) return;
+
+            const progress = Number(state.reasoning_progress) || 0;
+
+            document.getElementById('remainingTurns').textContent = state.remaining_turns;
+            document.getElementById('progressText').textContent = `${progress.toFixed(0)}%`;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('reasoningLevel').textContent = `Lv.${state.ability.reasoning_level}`;
+
+            document.getElementById('abilityObservation').textContent = `Lv.${state.ability.observation}`;
+            document.getElementById('abilityLogic').textContent = `Lv.${state.ability.logic}`;
+            document.getElementById('abilityAssociation').textContent = `Lv.${state.ability.association}`;
+            document.getElementById('abilityKnowledge').textContent = `Lv.${state.ability.knowledge}`;
+
+            // 更新增益
+            const bonusesList = document.getElementById('bonusesList');
+            if (state.active_bonuses && state.active_bonuses.length > 0) {
+                bonusesList.innerHTML = state.active_bonuses.map(b => `
+                    <div class="bonus-item">${b.description}</div>
+                `).join('');
+            } else {
+                bonusesList.innerHTML = '<p style="color: #777; font-size: 13px;">暂无增益</p>';
+            }
+
+            // 更新身份专属行动
+            updateActions(state.identity_actions || []);
+        }
+
+        // 渲染身份专属行动按钮
+        function updateActions(actions) {
+            const section = document.getElementById('identityActionsSection');
+            const list = document.getElementById('actionsList');
+            if (!section || !list) return;
+
+            // 缓存行动列表，点击时用 id 反查行动名（气泡里显示名字而不是UUID）
+            window._identityActions = actions || [];
+
+            if (!actions || actions.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            section.classList.remove('hidden');
+            list.innerHTML = actions.map(a => `
+                <button class="action-card" data-action-btn ${a.used ? 'disabled' : ''} onclick="doIdentityAction('${a.id}')">
+                    <div style="font-weight: 600;">🎭 ${a.name}${a.used ? ' <span style="color:#9caf9c; font-size:12px; font-weight:400;">（已使用）</span>' : ''}</div>
+                    <div style="font-size: 12px; color: #5c6e5c; margin-top: 2px; line-height: 1.5;">${a.desc}</div>
+                </button>
+            `).join('');
+        }
+
+        // 执行身份专属行动（免费）
+        async function doIdentityAction(actionId) {
+            const a = (window._identityActions || []).find(x => x.id === actionId);
+            await sendAction('identity_action', actionId, a ? a.name : null);
+        }
+
+        // 页面加载时检查是否有可恢复的上局存档
+        async function checkResume() {
+            try {
+                const response = await fetch(`${API_BASE}/api/game/resume`);
+                const result = await response.json().catch(() => null);
+                if (result && result.success && result.has_save && result.data) {
+                    window._resumeData = result.data;
+                    const gs = result.data.game_state;
+                    document.getElementById('resumeLabel').textContent =
+                        `▶️ 继续上局《${gs.case.title}》（${gs.user_identity} · 剩余${gs.remaining_turns}次推理）`;
+                    document.getElementById('resumeBtn').classList.remove('hidden');
+                }
+            } catch (e) { /* 后端未启动或无存档，忽略 */ }
+        }
+
+        // 恢复上局：重建案件界面 + 重放对话流水
+        function resumeGame() {
+            const data = window._resumeData;
+            if (!data) return;
+
+            currentGameId = data.game_id;
+            currentMode = data.game_state.mode;
+
+            document.getElementById('startModal').classList.remove('active');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            displayCaseInfo(data);
+
+            document.getElementById('learningBtn').classList.toggle('hidden', currentMode !== 'learning');
+
+            // 重放对话流水（含欢迎语、案件呈递、历史问答）
+            const log = data.game_state.inquiry_log || [];
+            for (const entry of log) {
+                addInquiryToHistory(entry.role === 'user' ? 'user' : 'ai', entry.content);
+            }
+            if (log.length === 0) {
+                addInquiryToHistory('ai', data.welcome_message || '');
+                addInquiryToHistory('ai', data.case_presentation || '');
+            }
+            if (data.game_state.game_over) {
+                endGameUI();
+            }
+
+            showNotification('已恢复上局进度，继续推理！', 'success');
+        }
+
+        // 识别「询问他人」意图：以 问/问问/询问/打听/请教 + 人称 + 分隔符 开头
+        // 例：问保安：... / 询问其他住户，... / 打听老师：...
+        // 排除「问题/问卷/案件」这类以"问"开头的普通疑问句
+        function looksLikeAskPerson(text) {
+            return /^(问问|询问|打听|请教|问)(?![题卷目案]).{1,8}?[：:，,。！？\s]/.test(text);
+        }
+
+        // 提问（自动识别意图：像"问XX：..."这样的话自动转给「询问他人」）
+        async function askQuestion() {
+            const text = document.getElementById('actionInput').value.trim();
+            if (text && looksLikeAskPerson(text)) {
+                showNotification('检测到你在找人打听，已按「🗣 询问他人」处理（消耗1次推理）', 'info');
+                await sendAction('ask_person');
+                return;
+            }
+            await sendAction('question');
+        }
+
+        // 提出猜想
+        async function makeHypothesis() {
+            await sendAction('hypothesis');
+        }
+
+        // 还原真相
+        async function verifyTruth() {
+            const input = document.getElementById('actionInput').value.trim();
+            if (!input) {
+                showNotification('请输入你还原的真相', 'error');
+                return;
+            }
+
+            if (!confirm('确定要提交真相验证吗？这将消耗验证机会。')) {
+                return;
+            }
+
+            await sendAction('verification');
+        }
+
+        // 询问他人（替代请求提示）：打开弹窗选人物 + 输入问题，消耗一次推理机会
+        const DEFAULT_ASKABLE_PEOPLE = ['保安', '邻居', '目击者', '死者的朋友', '物业前台', '店家老板'];
+
+        function askSomeone() {
+            // 案件生成时产出的相关人物优先，旧存档没有则用通用人选
+            const people = (window._askablePeople && window._askablePeople.length)
+                ? window._askablePeople
+                : DEFAULT_ASKABLE_PEOPLE;
+            const box = document.getElementById('askPersonChips');
+            box.innerHTML = people.map(p => `<span class="person-chip" onclick="selectAskPerson(this)">${p}</span>`).join('');
+            document.getElementById('askPersonCustom').value = '';
+            document.getElementById('askPersonQuestion').value = '';
+            document.getElementById('askPersonModal').classList.add('active');
+        }
+
+        function closeAskPerson() {
+            document.getElementById('askPersonModal').classList.remove('active');
+        }
+
+        // 单选人物：再次点击已选中的可取消
+        function selectAskPerson(el) {
+            const wasSelected = el.classList.contains('selected');
+            document.querySelectorAll('#askPersonChips .person-chip').forEach(c => c.classList.remove('selected'));
+            if (!wasSelected) el.classList.add('selected');
+        }
+
+        async function submitAskPerson() {
+            const custom = document.getElementById('askPersonCustom').value.trim();
+            const selectedEl = document.querySelector('#askPersonChips .person-chip.selected');
+            const person = custom || (selectedEl ? selectedEl.textContent.trim() : '');
+            const question = document.getElementById('askPersonQuestion').value.trim();
+
+            if (!person) {
+                showNotification('请先选择或输入想询问的人', 'error');
+                return;
+            }
+            if (!question) {
+                showNotification('请写下你想问的问题', 'error');
+                return;
+            }
+
+            closeAskPerson();
+            await sendAction('ask_person', `问${person}：${question}`);
+        }
+
+        // 发送行动（流式：主持人回复逐字上屏；失败自动回退老接口）
+        async function sendAction(actionType, contentOverride = null, displayOverride = null) {
+            if (busy) {
+                showNotification('主持人正在思考，请稍候...', 'info');
+                return;
+            }
+
+            const content = contentOverride !== null && contentOverride !== undefined
+                ? contentOverride
+                : document.getElementById('actionInput').value.trim();
+
+            if (!content && actionType !== 'hint' && actionType !== 'learning') {
+                showNotification(actionType === 'ask_person'
+                    ? '先在输入框写下想询问的人和问题，例如：问保安 你昨晚看到了什么'
+                    : '请输入内容', 'error');
+                return;
+            }
+
+            if (!currentGameId) {
+                showNotification('游戏未开始', 'error');
+                return;
+            }
+
+            // 玩家消息先上屏（流式期间也能看到自己说了什么）
+            let userLabel = content;
+            if (actionType === 'hint') userLabel = '🔍 请求提示';
+            if (actionType === 'ask_person') userLabel = `🗣 ${content}`;
+            if (actionType === 'identity_action') userLabel = `🎭 身份行动：${displayOverride || content}`;
+
+            setBusy(true);
+            // 先上屏玩家消息，再创建AI气泡 —— 保证「我先问，AI再答」的顺序
+            if (actionType !== 'learning') {
+                addInquiryToHistory('user', userLabel);
+            }
+            const aiBubble = addTypingBubble();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/game/action/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: currentGameId,
+                        action_type: actionType,
+                        content: content || ''
+                    })
+                });
+                if (!response.ok || !response.body) throw new Error('stream unavailable');
+
+                let finalData = null;
+                let errMsg = null;
+                await consumeSSE(response, {
+                    delta: (ev) => { aiBubble.appendText(ev.text); },
+                    reset: () => { aiBubble.clear(); },
+                    final: (ev) => { finalData = ev.data; },
+                    error: (ev) => { errMsg = ev.message; }
+                });
+
+                if (errMsg) {
+                    aiBubble.remove();
+                    showNotification(errMsg, 'error');
+                    return;
+                }
+                if (!finalData) {
+                    aiBubble.remove();
+                    showNotification('AI未返回有效内容', 'error');
+                    return;
+                }
+
+                // 权威结果覆盖流式文本（判定等由后端模板保证格式）
+                applyActionData(finalData, aiBubble);
+
+                if (!contentOverride) {
+                    document.getElementById('actionInput').value = '';
+                }
+            } catch (error) {
+                console.warn('流式接口不可用，回退普通接口', error);
+                await legacySendAction(actionType, content, aiBubble);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        // 老版非流式行动（兜底）
+        async function legacySendAction(actionType, content, aiBubble) {
+            try {
+                const response = await fetch(`${API_BASE}/api/game/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: currentGameId,
+                        action_type: actionType,
+                        content: content || ''
+                    })
+                });
+
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok || !result || !result.success) {
+                    aiBubble.remove();
+                    showNotification(getErrorText(result), 'error');
+                    return;
+                }
+
+                applyActionData(result.data, aiBubble);
+
+                if (actionType !== 'identity_action') {
+                    document.getElementById('actionInput').value = '';
+                }
+            } catch (error) {
+                console.error(error);
+                aiBubble.remove();
+                showNotification('请求失败，请检查后端是否运行', 'error');
+            }
+        }
+
+        // 游戏结束后的界面处理：锁定输入，显示再来一局
+        function endGameUI() {
+            document.getElementById('actionInput').disabled = true;
+            document.querySelectorAll('[data-action-btn]').forEach(btn => btn.classList.add('hidden'));
+            document.getElementById('restartBtn').classList.remove('hidden');
+            // 结算后刷新等级徽章（顶栏立即反映升降级）
+            refreshProfileBadge();
+        }
+
+        // 添加对话到历史（微信气泡样式：用户在右，AI在左）
+        function addInquiryToHistory(role, content) {
+            const historyDiv = document.getElementById('inquiryHistory');
+
+            // 首条消息时移除占位提示
+            const placeholder = document.getElementById('historyPlaceholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+
+            const row = document.createElement('div');
+            row.className = `chat-row ${role === 'user' ? 'chat-user' : 'chat-ai'}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'chat-avatar';
+            avatar.textContent = role === 'user' ? '👤' : '🧩';
+
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
+            bubble.textContent = content;
+
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            historyDiv.appendChild(row);
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        // 学习挑战：向AI主持人索要习题
+        async function startLearningChallenge() {
+            if (busy) {
+                showNotification('请稍候，正在处理中...', 'info');
+                return;
+            }
+
+            if (!currentGameId) {
+                showNotification('游戏未开始', 'error');
+                return;
+            }
+
+            try {
+                setBusy(true);
+                showNotification('正在生成习题...', 'info');
+
+                const response = await fetch(`${API_BASE}/api/game/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: currentGameId,
+                        action_type: 'learning',
+                        content: ''
+                    })
+                });
+
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok || !result || !result.success) {
+                    showNotification(getErrorText(result), 'error');
+                    return;
+                }
+
+                const data = result.data;
+                currentExercise = data.exercise;
+
+                // 填充模态框
+                document.getElementById('exerciseIntro').textContent = data.intro || '';
+                document.getElementById('exerciseQuestion').textContent = `【${currentExercise.knowledge_point}】\n${currentExercise.question}`;
+
+                const optionsDiv = document.getElementById('exerciseOptions');
+                const textAnswer = document.getElementById('exerciseTextAnswer');
+                optionsDiv.innerHTML = '';
+                textAnswer.classList.add('hidden');
+
+                const isObjective = Array.isArray(currentExercise.options) && currentExercise.options.length > 0;
+                if (isObjective) {
+                    // 选择题/判断题：单选按钮
+                    optionsDiv.innerHTML = currentExercise.options.map((opt, i) => `
+                        <label style="display:block; padding:10px 14px; margin:6px 0; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer;">
+                            <input type="radio" name="exerciseOption" value="${opt}" style="margin-right:10px;">${opt}
+                        </label>
+                    `).join('');
+                } else {
+                    // 简答题：文本输入
+                    textAnswer.classList.remove('hidden');
+                }
+
+                document.getElementById('exerciseModal').classList.add('active');
+            } catch (error) {
+                console.error(error);
+                showNotification('获取习题失败，请检查后端是否运行', 'error');
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        // 提交习题答案
+        async function submitExerciseAnswer() {
+            if (!currentGameId || !currentExercise) return;
+
+            const selected = document.querySelector('input[name="exerciseOption"]:checked');
+            const textAnswer = document.getElementById('exerciseTextAnswer').value.trim();
+            const answer = selected ? selected.value : textAnswer;
+
+            if (!answer) {
+                showNotification('请先作答', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('exerciseSubmitBtn');
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '评分中...';
+
+                const response = await fetch(`${API_BASE}/api/game/exercise/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: currentGameId,
+                        answer: answer
+                    })
+                });
+
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok || !result || !result.success) {
+                    showNotification(getErrorText(result), 'error');
+                    return;
+                }
+
+                const data = result.data;
+
+                // 展示评分反馈到推理历史
+                addInquiryToHistory('user', `📚 学习挑战作答：${answer}`);
+                addInquiryToHistory('ai', data.message || (data.success ? '回答正确！' : '答案不正确。'));
+
+                if (data.reward && data.reward.description) {
+                    showNotification(data.reward.description, 'success');
+                } else {
+                    showNotification(data.success ? '回答正确！' : '答案不正确，继续加油！', data.success ? 'success' : 'warning');
+                }
+
+                // 更新状态并关闭模态框
+                if (data.game_state) {
+                    updateGameState(data.game_state);
+                    if (data.game_state.case) {
+                        updateClues(data.game_state.case.revealed_clues);
+                    }
+                }
+
+                currentExercise = null;
+                document.getElementById('exerciseModal').classList.remove('active');
+            } catch (error) {
+                console.error(error);
+                showNotification('提交失败，请重试', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '提交答案';
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+
+            if (type === 'error') {
+                notification.style.background = 'rgba(229, 57, 53, 0.95)';
+            } else if (type === 'success') {
+                notification.style.background = 'rgba(67, 160, 71, 0.95)';
+            } else if (type === 'warning') {
+                notification.style.background = 'rgba(255, 179, 0, 0.95)';
+                notification.style.color = '#4e342e';
+            } else {
+                notification.style.background = 'rgba(67, 160, 71, 0.95)';
+            }
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // 回车发送
+        document.getElementById('actionInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+
+        // 一句话开局输入框：回车直接开始游戏
+        document.getElementById('quickSentence').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startGame();
+            }
+        });
+
+        // 上传学习材料（PDF/TXT/MD），提取文本填入输入框
+        async function uploadLearningFile(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const hint = document.getElementById('uploadHint');
+            const showHint = (text, isError) => {
+                hint.textContent = text;
+                hint.style.color = isError ? '#c62828' : '#2e7d32';
+                hint.classList.remove('hidden');
+            };
+
+            if (file.size > 20 * 1024 * 1024) {
+                showHint('❌ 文件超过 20MB，请拆分后重试', true);
+                input.value = '';
+                return;
+            }
+
+            showHint(`⏳ 正在读取「${file.name}」...`, false);
+
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const resp = await fetch(`${API_BASE}/api/learning/upload`, {
+                    method: 'POST',
+                    body: fd
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    showHint(`❌ ${data.detail || '上传失败'}`, true);
+                    input.value = '';
+                    return;
+                }
+                document.getElementById('learningContent').value = data.text;
+                showHint(`✅ 已载入「${data.filename}」共 ${data.chars} 字${data.truncated ? '（超长已截断）' : ''}`, false);
+            } catch (err) {
+                showHint('❌ 上传失败：' + err.message, true);
+            }
+            input.value = '';
+        }
+
+        // ==================== 个人资料 ====================
+        async function openProfile() {
+            document.getElementById('profileModal').classList.add('active');
+            document.getElementById('profileRecords').innerHTML =
+                '<p style="color:#7c8b7c; font-size:14px; text-align:center;">加载中...</p>';
+            try {
+                const resp = await fetch(`${API_BASE}/api/profile`);
+                if (!resp.ok) throw new Error('bad status ' + resp.status);
+                const p = await resp.json();
+                document.getElementById('profileLevelBig').textContent = `Lv.${p.level}`;
+                document.getElementById('profileFabLevel').textContent = `Lv.${p.level}`;
+                document.getElementById('profileStats').innerHTML =
+                    `胜 ${p.wins} · 负 ${p.losses}<br>胜率 ${p.win_rate}%`;
+                renderProfileRecords(p.records);
+            } catch (e) {
+                document.getElementById('profileLevelBig').textContent = 'Lv.?';
+                document.getElementById('profileRecords').innerHTML =
+                    '<p style="color:#c62828; font-size:14px; text-align:center; padding:12px 0;">加载失败：请重启后端（run_backend.bat）后刷新页面</p>';
+            }
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+
+        function renderProfileRecords(records) {
+            const box = document.getElementById('profileRecords');
+            if (!records || !records.length) {
+                box.innerHTML = '<p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">还没有完成过案件，去开一局吧！</p>';
+                return;
+            }
+            box.innerHTML = records.map(r => {
+                const win = r.result === 'win';
+                const d = new Date(r.ts * 1000);
+                const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(255,255,255,0.75); border-radius:10px; border:1px solid rgba(46,125,50,0.12);">
+                    <span style="font-size:18px;">${win ? '✅' : '❌'}</span>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:600; color:#2e4a2e; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">《${r.title}》</div>
+                        <div style="font-size:12px; color:#7c8b7c; margin-top:2px;">身份：${r.identity} · 推理进度${r.progress}% · 用了${r.turns_used}次推理 · ${dateStr}</div>
+                    </div>
+                    <span style="font-size:12px; font-weight:700; color:${win ? '#2e7d32' : '#c62828'}; flex-shrink:0;">${win ? '成功' : '失败'}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // 刷新等级徽章（悬浮卡 + 游戏内顶栏「推理等级」）
+        async function refreshProfileBadge() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/profile`);
+                if (!resp.ok) return;
+                const p = await resp.json();
+                const fab = document.getElementById('profileFabLevel');
+                if (fab) fab.textContent = `Lv.${p.level}`;
+                const bar = document.getElementById('reasoningLevel');
+                if (bar) bar.textContent = `Lv.${p.level}`;
+            } catch (e) { /* 后端未启动，忽略 */ }
+        }
+
+        // ==================== 知乎集成（OAuth 登录 + 故事改编） ====================
+        // 会话 cookie 为 HttpOnly，前端只查询状态；token 由后端保管
+        let zhihuLoginConfigured = false;
+
+        async function refreshZhihuMe() {
+            const nameEl = document.getElementById('zhihuName');
+            const hintEl = document.getElementById('zhihuHint');
+            const avatarEl = document.getElementById('zhihuAvatar');
+            const loginBtn = document.getElementById('zhihuLoginBtn');
+            const logoutBtn = document.getElementById('zhihuLogoutBtn');
+            try {
+                const resp = await fetch(`${API_BASE}/api/zhihu/me`, { credentials: 'include' });
+                const me = await resp.json();
+                if (me.logged_in) {
+                    const u = me.user || {};
+                    nameEl.textContent = (me.mock ? '演示会话：' : '') + (u.fullname || '知乎用户');
+                    hintEl.textContent = me.mock ? '演示登录·非真实知乎账号（填入OAuth凭证后自动变真登录）' : '已通过知乎授权登录';
+                    if (u.avatar_path) {
+                        avatarEl.innerHTML = `<img src="${u.avatar_path}" style="width:100%;height:100%;object-fit:cover;" alt="">`;
+                    } else {
+                        avatarEl.textContent = me.mock ? '🎭' : '知';
+                    }
+                    loginBtn.classList.add('hidden');
+                    logoutBtn.classList.remove('hidden');
+                } else {
+                    nameEl.textContent = '未登录知乎';
+                    hintEl.textContent = zhihuLoginConfigured ? '登录后可在作品页展示账号身份' : '后端未配置OAuth，登录为演示模式';
+                    avatarEl.textContent = '知乎';
+                    loginBtn.classList.remove('hidden');
+                    logoutBtn.classList.add('hidden');
+                }
+            } catch (e) { /* 后端未启动，静默 */ }
+        }
+
+        async function zhihuLogin() {
+            try {
+                // 先查后端是否已配置凭证：未配置→演示登录（fetch建会话）；已配置→跳知乎授权页
+                const cfgResp = await fetch(`${API_BASE}/api/zhihu/config`);
+                const cfg = await cfgResp.json();
+                if (!cfg.oauth_configured) {
+                    await fetch(`${API_BASE}/api/zhihu/login`, { credentials: 'include' });
+                    showNotification('已创建演示登录会话（未配置知乎OAuth凭证）', 'success');
+                    refreshZhihuMe();
+                    return;
+                }
+                // 真实OAuth：整页跳授权页，回来时带 ?zhihu_login=success；from_origin 用于回调后跳回前端
+                window.location.href = `${API_BASE}/api/zhihu/login?from_origin=${encodeURIComponent(window.location.origin)}`;
+            } catch (e) {
+                showNotification('知乎登录失败：' + e.message, 'error');
+            }
+        }
+
+        async function zhihuLogout() {
+            try {
+                await fetch(`${API_BASE}/api/zhihu/logout`, { method: 'POST', credentials: 'include' });
+                showNotification('已退出知乎登录', 'success');
+            } catch (e) { /* ignore */ }
+            refreshZhihuMe();
+        }
+
+        function closeZhihuStories() {
+            document.getElementById('zhihuStoryModal').classList.remove('active');
+        }
+
+        async function openZhihuStories() {
+            document.getElementById('zhihuStoryModal').classList.add('active');
+            const box = document.getElementById('zhihuStoryList');
+            box.innerHTML = '<p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">加载中...</p>';
+            try {
+                const resp = await fetch(`${API_BASE}/api/zhihu/stories`);
+                const data = await resp.json();
+                if (!data.success) {
+                    box.innerHTML = `<p style="color:#c62828; font-size:13px; text-align:center; padding:16px 8px;">${data.error || '故事列表获取失败'}</p>`;
+                    return;
+                }
+                if (!data.stories.length) {
+                    box.innerHTML = `<p style="color:#7c8b7c; font-size:13px; text-align:center; padding:16px 8px;">${data.note || '暂无故事'}</p>`;
+                    return;
+                }
+                box.innerHTML = data.stories.map(s => {
+                    const author = s.author_name ? ` · ${s.author_name}` : '';
+                    const labels = (s.labels || []).slice(0, 3).map(l => `<span style="display:inline-block; padding:1px 8px; margin-right:4px; background:rgba(0,102,255,0.08); border-radius:6px; font-size:11px; color:#0052cc;">${l}</span>`).join('');
+                    return `<div style="padding:12px 14px; background:rgba(255,255,255,0.8); border:1px solid rgba(46,125,50,0.12); border-radius:12px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:700; color:#2e4a2e; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">《${s.title || '未命名'}》</div>
+                                <div style="font-size:12px; color:#7c8b7c; margin-top:2px;">${author}</div>
+                            </div>
+                            <button class="btn btn-primary" onclick="adaptZhihuStory('${s.work_id}')" style="padding:7px 14px; font-size:13px; flex-shrink:0;">用这个开局</button>
+                        </div>
+                        ${s.description ? `<div style="font-size:12px; color:#5c6e5c; margin-top:6px; line-height:1.5;">${s.description}</div>` : ''}
+                        ${labels ? `<div style="margin-top:6px;">${labels}</div>` : ''}
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                box.innerHTML = `<p style="color:#c62828; font-size:13px; text-align:center; padding:16px 8px;">加载失败：${e.message}（请确认后端已启动）</p>`;
+            }
+        }
+
+        async function adaptZhihuStory(workId) {
+            showNotification('正在把知乎故事改编成汤面...', 'success');
+            try {
+                const resp = await fetch(`${API_BASE}/api/zhihu/story/${encodeURIComponent(workId)}/adapt`);
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    showNotification('改编失败：' + (err.detail || resp.status), 'error');
+                    return;
+                }
+                const data = await resp.json();
+                // 选好故事待开局：存 premise + 显示归属，由用户点「开始游戏」触发
+                zhihuPending = { premise: data.premise, attribution: data.attribution, title: data.title };
+                const attr = document.getElementById('zhihuAttribution');
+                attr.textContent = `📖 已选《${data.title}》· 点「开始游戏」开局` + (data.author_name ? ` · 作者 ${data.author_name}` : '');
+                attr.classList.remove('hidden');
+                closeZhihuStories();
+                showNotification(`已选《${data.title}》，点「开始游戏」开始推理`, 'success');
+            } catch (e) {
+                showNotification('改编失败：' + e.message, 'error');
+            }
+        }
+
+        // 初始化：查凭证配置 + 登录状态 + 处理OAuth回调跳回参数
+        async function initZhihu() {
+            try {
+                const cfgResp = await fetch(`${API_BASE}/api/zhihu/config`);
+                zhihuLoginConfigured = (await cfgResp.json()).oauth_configured;
+            } catch (e) { /* ignore */ }
+            const params = new URLSearchParams(window.location.search);
+            const loginResult = params.get('zhihu_login');
+            if (loginResult) {
+                if (loginResult === 'success') showNotification('✅ 知乎授权登录成功', 'success');
+                else if (loginResult === 'mock') showNotification('已创建演示登录会话', 'success');
+                else if (loginResult === 'error') showNotification('知乎登录失败：' + (params.get('reason') || '未知原因'), 'error');
+                params.delete('zhihu_login'); params.delete('reason');
+                const qs = params.toString();
+                history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+            }
+            refreshZhihuMe();
+        }
+        initZhihu();
+
+        // 页面加载：检查可恢复的上局存档
+        checkResume();
+        refreshProfileBadge();
+    </script>
+</body>
+</html>
