@@ -1,0 +1,25 @@
+# ===== 敏感信息（绝对不能上传） =====
+.env
+*.env.local
+backend/.env
+
+# ===== 运行数据与日志 =====
+backend/data/
+*.log
+backend/backend_debug.log
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ===== 本地工具配置 =====
+.workbuddy/
+.claude/
+.git/
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
