@@ -16,6 +16,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+from urllib.parse import quote
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 API = "https://api.github.com"
@@ -107,18 +108,27 @@ def main():
         print(f"创建仓库失败: {code} {resp.get('message')}")
         sys.exit(1)
 
-    # 3. 逐文件上传
+    # 3. 逐文件上传（已存在的文件先取 sha 再更新）
     files = collect_files()
     print(f"[3/3] 开始上传 {len(files)} 个文件...")
     fail = []
     for i, (full, rel) in enumerate(files, 1):
         with open(full, "rb") as f:
             content = base64.b64encode(f.read()).decode()
-        code, resp = api_request("PUT", f"/repos/{OWNER}/{repo_name}/contents/{rel}", {
-            "message": f"upload: {rel}",
-            "content": content,
-            "branch": "main",
-        })
+
+        # 预取 sha（文件已存在时必须携带才能更新）
+        sha = None
+        gcode, gresp = api_request("GET", f"/repos/{OWNER}/{repo_name}/contents/{quote(rel)}?ref=main")
+        if gcode == 200:
+            sha = gresp.get("sha")
+            if sha and gresp.get("content") and gresp["content"].replace("\n", "") == content:
+                print(f"  [{i}/{len(files)}] SKIP {rel} (内容未变)")
+                continue
+
+        body = {"message": f"upload: {rel}", "content": content, "branch": "main"}
+        if sha:
+            body["sha"] = sha
+        code, resp = api_request("PUT", f"/repos/{OWNER}/{repo_name}/contents/{quote(rel)}", body)
         ok = code in (201, 200)
         size_kb = os.path.getsize(full) / 1024
         print(f"  [{i}/{len(files)}] {'OK ' if ok else 'FAIL'} {rel} ({size_kb:.1f}KB)")
