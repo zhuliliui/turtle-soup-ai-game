@@ -95,8 +95,9 @@ class ReasoningEngine:
                 answer = "否"
             print(f"[推理引擎] answer字段值: '{answer}'")
 
+            # 推理进度 = 玩家累计还原的真相百分比（truth_coverage），只进不退
             state_updates = {
-                "progress_delta": data.get("progress_delta", 0),
+                "progress_delta": self._coverage_delta(game_state, data.get("truth_coverage")),
                 "revealed_info": [answer],
                 "is_critical": bool(data.get("is_critical", False))
             }
@@ -117,7 +118,7 @@ class ReasoningEngine:
         elif inquiry_type == InquiryType.HYPOTHESIS:
             dialogue = self._clean_dialogue(full)
             state_updates = {
-                "progress_delta": data.get("progress_delta", 0),
+                "progress_delta": self._coverage_delta(game_state, data.get("truth_coverage")),
                 "correctness": data.get("correctness", 0),
                 "revealed_info": []
             }
@@ -125,9 +126,19 @@ class ReasoningEngine:
             yield ("final", (ai_response, state_updates))
 
         else:  # VERIFICATION
+            # 判定规则：还原度>60 破案成功（升1级）；>80 优秀（升2级）
+            try:
+                completeness = float(data.get("completeness", 0) or 0)
+            except (TypeError, ValueError):
+                completeness = 0.0
+            is_correct = completeness > 60
+            is_excellent = completeness > 80
+            data["is_correct"] = is_correct
+            data["is_excellent"] = is_excellent
+            data["completeness"] = completeness
             state_updates = {
-                "case_solved": bool(data.get("is_correct", False)),
-                "game_over": True,
+                "case_solved": is_correct,
+                "game_over": is_correct,
                 "verification_result": data
             }
             yield ("final", ("", state_updates))
@@ -140,6 +151,22 @@ class ReasoningEngine:
             if i >= 0:
                 text = text[:i]
         return text.strip()
+
+    @staticmethod
+    def _coverage_delta(game_state: GameState, raw_coverage) -> float:
+        """把 LLM 估算的「累计真相还原度」换算成本次进度增量（只进不退）。
+
+        进度条语义 = 玩家目前还原了多少真相，而非按轮次累加：
+        delta = clamp(coverage, 0, 100) - 当前进度，负值归零（进度不回退）。
+        LLM 未返回 coverage 时增量记 0（宁可不动也不虚涨）。
+        """
+        try:
+            coverage = float(raw_coverage)
+        except (TypeError, ValueError):
+            return 0.0
+        coverage = max(0.0, min(100.0, coverage))
+        current = float(game_state.reasoning_progress or 0)
+        return max(0.0, coverage - current)
 
     def _build_question_stream_prompt(self, game_state: GameState, question: str) -> str:
         context = self._build_reasoning_context(game_state)
@@ -171,17 +198,17 @@ class ReasoningEngine:
 {{
     "answer": "是",
     "is_critical": true,
-    "progress_delta": 15,
+    "truth_coverage": 30,
     "reasoning": "内部分析",
     "should_reveal_clue": false,
     "clue_to_reveal": ""
 }}
 
-progress_delta 判断标准：
-- 触及真相核心的问题：15-20
-- 方向正确但不够深入：10-15
-- 相关但偏离重点：5-10
-- 无关问题：0-5
+truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
+- 含义：综合目前已有的全部线索和对话，玩家**累计还原了完整真相的百分之几**——不是本次回答的质量分！
+- 五要素（谁/发生了什么/动机/手法/反转）基本拼齐才应接近 90-100
+- 只有玩家拼出真相的**新关键部分**时才明显提升；泛泛之问、重复提问、细枝末节不得提升
+- 当前累计还原度约 {game_state.reasoning_progress:.0f}%，新估值不得无故大幅偏离它
 """
 
     def _build_hypothesis_stream_prompt(self, game_state: GameState, hypothesis: str) -> str:
@@ -207,10 +234,16 @@ progress_delta 判断标准：
 另起一行输出标记 <<<SOUP_JSON>>>，然后输出JSON：
 {{
     "correctness": 65,
+    "truth_coverage": 40,
     "feedback": "引导性反馈",
-    "hint_direction": "下一步应该关注什么",
-    "progress_delta": 10
+    "hint_direction": "下一步应该关注什么"
 }}
+
+truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
+- 含义：综合目前已有的全部信息，玩家**累计还原了完整真相的百分之几**——不是本次猜想的正确率！
+- 五要素（谁/发生了什么/动机/手法/反转）基本拼齐才应接近 90-100
+- 只有猜想覆盖了真相的**新关键部分**时才明显提升；重复已知内容不得提升
+- 当前累计还原度约 {game_state.reasoning_progress:.0f}%，新估值不得无故大幅偏离它
 """
 
     def _build_verification_stream_prompt(self, game_state: GameState, truth_claim: str) -> str:
@@ -225,9 +258,10 @@ progress_delta 判断标准：
 
 你的输出分两部分：
 
-第一部分（玩家可见的判定，严格二元）：
-- 破案成功：只输出「是」—— 你还原了真相（可加一句祝贺，不超过15字）
-- 破案失败：只输出「否」—— 真相并非如此，不得透露任何错误细节或遗漏点
+第一部分（玩家可见的判定）：
+- 还原度超过80分（真相基本完整还原，优秀）：输出「是」—— 你完美还原了真相
+- 还原度60~80分（重要线索基本还原，成功）：输出「是」—— 你还原了真相
+- 还原度60分及以下：输出「否」—— 真相并非如此，不得透露任何错误细节或遗漏点
 
 第二部分（系统数据，玩家不可见）：
 另起一行输出标记 <<<SOUP_JSON>>>，然后输出JSON：
@@ -247,7 +281,8 @@ progress_delta 判断标准：
     "key_insights": ["关键洞察1"]
 }}
 
-判断标准：必须包含 who（谁）、what（发生了什么）、why（动机）、how（手法）、twist（反转点）且基本正确、逻辑自洽，才算破案成功。
+评分标准（completeness 0-100）：重要线索（谁/做了什么/关键手法/反转点）还原得越多，分数越高。
+系统以 completeness>60 作为破案成功（升级1级）、completeness>80 作为优秀（升级2级）的最终判定，请务必给出准确的分数。
 """
 
     async def _process_question(
@@ -281,7 +316,7 @@ progress_delta 判断标准：
    - "是" - 问题与事实相符
    - "否" - 问题与事实不符、无法从事实推出，或与案件无关
 3. 评估这个问题是否触及关键点
-4. 计算推理进度增量
+4. 估算 truth_coverage：玩家目前累计还原的真相百分比（0-100整数，不是本次回答质量；只有拼出真相的新关键部分才明显提升；五要素基本拼齐才接近90-100）
 
 **重要：不要在answer字段中添加任何解释，只能是"是"或"否"！**
 
@@ -291,17 +326,17 @@ progress_delta 判断标准：
     "is_critical": true,
     "quality_score": 75,
     "hint": "",
-    "progress_delta": 15,
+    "truth_coverage": 30,
     "reasoning": "内部分析（不会显示给玩家）",
     "should_reveal_clue": false,
     "clue_to_reveal": ""
 }}
 
 判断标准：
-- 触及真相核心的问题：quality_score 80-100, progress_delta 15-20
-- 方向正确但不够深入：quality_score 60-79, progress_delta 10-15
-- 相关但偏离重点：quality_score 40-59, progress_delta 5-10
-- 无关问题：quality_score 0-39, progress_delta 0-5
+- 触及真相核心的问题：quality_score 80-100
+- 方向正确但不够深入：quality_score 60-79
+- 相关但偏离重点：quality_score 40-59
+- 无关问题：quality_score 0-39
 """
 
         response = await self.llm.generate(prompt)
@@ -309,9 +344,9 @@ progress_delta 判断标准：
 
         print(f"[推理引擎] answer字段值: '{analysis.get('answer', '')}'")
 
-        # 根据分析结果更新游戏状态
+        # 根据分析结果更新游戏状态（进度=累计真相还原度，只进不退）
         state_updates = {
-            "progress_delta": analysis.get("progress_delta", 0),
+            "progress_delta": self._coverage_delta(game_state, analysis.get("truth_coverage")),
             "revealed_info": [analysis.get("answer", "")],
             "is_critical": analysis.get("is_critical", False)
         }
@@ -356,7 +391,7 @@ progress_delta 判断标准：
 2. 指出正确的部分
 3. 指出错误或遗漏的部分
 4. 给出引导性反馈（不直接说答案）
-5. 计算推理进度增量
+5. 估算 truth_coverage：玩家目前累计还原的真相百分比（0-100整数，不是本次猜想的正确率；只有覆盖真相的新关键部分才明显提升）
 
 返回JSON：
 {{
@@ -365,7 +400,7 @@ progress_delta 判断标准：
     "wrong_parts": ["错误的推理点1"],
     "missing_parts": ["遗漏的关键点1"],
     "feedback": "引导性反馈",
-    "progress_delta": 10,
+    "truth_coverage": 40,
     "hint_direction": "下一步应该关注什么"
 }}
 """
@@ -376,7 +411,7 @@ progress_delta 判断标准：
         ai_response = self._format_hypothesis_response(evaluation)
 
         state_updates = {
-            "progress_delta": evaluation.get("progress_delta", 0),
+            "progress_delta": self._coverage_delta(game_state, evaluation.get("truth_coverage")),
             "correctness": evaluation.get("correctness", 0),
             "revealed_info": evaluation.get("correct_parts", [])
         }
@@ -399,10 +434,7 @@ progress_delta 判断标准：
 玩家还原的真相：
 "{truth_claim}"
 
-评估标准：
-- 必须包含：who（谁）、what（发生了什么）、why（动机）、how（手法）、twist（反转点）
-- 每个要素都要基本正确
-- 整体逻辑要自洽
+评分标准（completeness 0-100）：重要线索（谁/做了什么/关键手法/反转点）还原得越多，分数越高。
 
 返回JSON：
 {{
@@ -421,17 +453,26 @@ progress_delta 判断标准：
     "key_insights": ["关键洞察1", "关键洞察2"]
 }}
 
-判断：只有所有核心要素都正确，才算破案成功。
+判断：completeness 超过60分即视为破案成功（is_correct=true，升级1级）；超过80分为优秀（升级2级），请给出准确的还原度分数。
 """
 
         response = await self.llm.generate(prompt)
         verification = self._parse_json_response(response, "真相验证")
 
-        is_correct = verification.get("is_correct", False)
+        # 判定规则：还原度>60 破案成功（升1级）；>80 优秀（升2级）
+        try:
+            completeness = float(verification.get("completeness", 0) or 0)
+        except (TypeError, ValueError):
+            completeness = 0.0
+        is_correct = completeness > 60
+        is_excellent = completeness > 80
+        verification["is_correct"] = is_correct
+        verification["is_excellent"] = is_excellent
+        verification["completeness"] = completeness
 
         state_updates = {
             "case_solved": is_correct,
-            "game_over": True,
+            "game_over": is_correct,
             "verification_result": verification
         }
 
