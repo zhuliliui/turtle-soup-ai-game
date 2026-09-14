@@ -24,7 +24,7 @@ TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 OWNER = None
 
 # .gitignore 过滤规则（手工等价实现）
-IGNORE_DIRS = {".git", ".workbuddy", ".workbuddy-ai", "__pycache__", ".venv", "venv", "node_modules"}
+IGNORE_DIRS = {".git", ".workbuddy", ".workbuddy-ai", ".claude", "__pycache__", ".venv", "venv", "node_modules"}
 IGNORE_FILES = {".env", ".env.local", ".DS_Store", "Thumbs.db"}
 IGNORE_SUFFIX = (".log", ".pyc", ".pyo", ".bak", ".tmp")
 
