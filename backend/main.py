@@ -24,11 +24,14 @@ from ai_host.llm_client import get_llm_client
 from models.game_state import GameMode
 from player_profile import load_profile
 from zhihu_integration import router as zhihu_router
+from news_integration import router as news_router
 
 app = FastAPI(title="海龟汤推理游戏 API")
 
 # 知乎黑客松集成：OAuth 登录 + 知乎故事改编（zhihu_integration.py）
 app.include_router(zhihu_router)
+# 热点新闻 → 海龟汤素材（news_integration.py）
+app.include_router(news_router)
 
 # CORS配置
 app.add_middleware(
