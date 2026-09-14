@@ -479,4 +479,6 @@ if os.path.isdir(_FRONTEND_DIR):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 云端部署：平台注入 PORT 环境变量；本地默认 8000
+    _port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=_port)
