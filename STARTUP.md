@@ -1,135 +1,88 @@
 # 海龟汤推理游戏 - 快速启动指南
 
-## 编码问题说明
+## 启动方式（本地）
 
-如果 `run_backend.bat` 出现中文乱码，请使用以下英文版脚本。
+双击项目根目录的 `run_backend.bat`，启动后端服务（端口 8000）。
 
-## 启动方式
+启动成功后浏览器打开：**http://localhost:8000** 即可游玩。
 
-### 方式1：一键启动（英文版）
-双击运行：`run_backend.bat`
+> 前端由后端直接托管，**无需单独启动前端服务**。
 
-### 方式2：分步启动
-
-1. 安装依赖（首次运行）
-   ```
-   双击 run_backend.bat
-   ```
-
-2. 启动后端
-   ```
-   双击 run_backend.bat
-   ```
-
-3. 启动前端（新开一个终端）
-   ```
-   双击 run_backend.bat
-   ```
-
-4. 打开浏览器
-   ```
-   访问 http://localhost:8080
-   ```
-
-### 方式3：命令行启动
-
-打开 CMD，执行：
+首次运行如缺依赖，手动安装一次即可：
 
 ```cmd
-# 1. 安装依赖（首次）
 cd backend
 pip install -r requirements.txt
-
-# 2. 启动后端
-python main.py
 ```
 
-新开一个 CMD：
+## 访问地址
+
+- **在线试玩（固定链接，推荐评委使用）**: https://15cd6151e0904833885706cd26a4793c.app.workbuddy.host
+- 本地游戏界面: 双击 run_backend.bat 后打开 http://localhost:8000
+- API文档: http://localhost:8000/docs
+
+## 常见问题（FAQ）
+
+### Q1：关机重启后，需要重新打开后端吗？
+
+**需要。** 本地后端没有开机自启，电脑重启后：
+
+1. 双击项目根目录的 `run_backend.bat`
+2. 看到 `Application startup complete` 即启动成功
+3. 浏览器打开 http://localhost:8000
+
+**注意：云端固定链接不受你电脑开关机影响**——关机后评委仍可正常访问在线试玩地址。
+
+### Q2：知乎真实登录在哪里发起？
+
+**必须从云端正式站点发起**：https://15cd6151e0904833885706cd26a4793c.app.workbuddy.host
+
+原因与流程说明：
+
+- 知乎 OAuth 的回调地址登记在云端域名上。若从本地页面（localhost:8000）发起登录，授权码会回到云端而非本地，本地没有对应的 state，必然报「state 无效或已过期」。
+- 后端已加**防呆拦截**：在本地页面点「知乎登录」会直接弹提示引导你去正式站点，不会再走到一半失败。
+- 正确流程：打开云端站点 → 点「知乎登录」→ 跳转知乎授权页 → 点授权 → 自动回跳并提示「✅ 知乎授权登录成功」。
+
+### Q3：演示模式是什么？
+
+若后端未配置知乎 OAuth 凭证（`.env` 缺少 `ZHIHU_OAUTH_APP_ID` / `ZHIHU_OAUTH_APP_KEY`），点「知乎登录」会自动创建**演示会话**（演示玩家身份），不影响核心游戏体验——评委没有知乎账号也能完整游玩。
+
+### Q4：端口被占用（Address already in use）
+
 ```cmd
-# 3. 启动前端
-cd frontend
-python -m http.server 8080
+netstat -ano | findstr :8000
+taskkill /PID <进程ID> /F
+```
+
+然后重新双击 `run_backend.bat`。
+
+### Q5：依赖安装失败 / ModuleNotFoundError
+
+```cmd
+python -m pip install --upgrade pip
+cd backend
+pip install -r requirements.txt --no-cache-dir
+```
+
+### Q6：API Key 未配置
+
+检查 `backend\.env` 文件，确保包含：
+
+```
+ANTHROPIC_API_KEY=sk-ant-你的密钥
 ```
 
 ## 验证启动成功
 
-后端启动后会看到：
+后端窗口显示：
+
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8000
 INFO:     Application startup complete.
 ```
 
-前端启动后会看到：
-```
-Serving HTTP on 0.0.0.0 port 8080
-```
-
-## 访问地址
-
-- 在线试玩（固定链接）: https://15cd6151e0904833885706cd26a4793c.app.workbuddy.host
-- 本地游戏界面: 运行 run_backend.bat 后打开 http://localhost:8000
-- API文档: http://localhost:8000/docs
-
-## 故障排查
-
-### 端口被占用
-如果看到 `Address already in use` 错误：
-
-```cmd
-# 查看占用端口的进程
-netstat -ano | findstr :8000
-netstat -ano | findstr :8080
-
-# 结束进程（将PID替换为实际进程ID）
-taskkill /PID <进程ID> /F
-```
-
-### 依赖安装失败
-```cmd
-# 升级pip
-python -m pip install --upgrade pip
-
-# 重新安装
-cd backend
-pip install -r requirements.txt --no-cache-dir
-```
-
-### Python版本问题
-确保使用 Python 3.9+：
-```cmd
-python --version
-```
-
-### API Key未配置
-检查 `backend\.env` 文件，确保：
-```
-ANTHROPIC_API_KEY=sk-ant-你的密钥
-```
-
 ## 测试API
 
-在浏览器打开：http://localhost:8000/docs
-
-会看到FastAPI自动生成的交互式文档。
-
-点击 `GET /` 测试接口是否正常。
-
-## 常见错误
-
-**错误**: `ModuleNotFoundError: No module named 'fastapi'`
-**解决**: 运行 `run_backend.bat` 安装依赖
-
-**错误**: `Error: ANTHROPIC_API_KEY not found`
-**解决**: 配置 `backend\.env` 文件
-
-**错误**: 浏览器打开后显示 404
-**解决**: 确保访问的是 http://localhost:8080 而不是 8000
-
-## 成功启动的标志
-
-1. 后端窗口显示 "Application startup complete"
-2. 前端窗口显示 "Serving HTTP on"
-3. 浏览器能打开游戏界面
-4. 点击"开始游戏"能看到案件生成
+浏览器打开 http://localhost:8000/docs 查看交互式 API 文档。
 
 现在开始游戏吧！
