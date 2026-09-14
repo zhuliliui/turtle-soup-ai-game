@@ -234,9 +234,9 @@ async def zhihu_callback(request: Request,
                          state: Optional[str] = None):
     """知乎回调：换 token → 取用户 → 建会话 → 302 回前端。
 
-    兼容说明（oauth.md 实测）：
+    兼容说明（oauth.md 官方最新）：
     - 回调参数实际为 authorization_code，token 接口表单字段用 code；两者都接收
-    - 线上实测回调可能不回带 state：带了就严格校验，没带则放行并记录（协议待确认项）
+    - 黑客松 OAuth 服务已支持 state 透传（官方最新文档）：回调必须携带 state，缺失即拒绝
     """
     cfg = _oauth_config()
     auth_code = (authorization_code or code or "").strip()
@@ -260,7 +260,9 @@ async def zhihu_callback(request: Request,
         if time.time() - state_entry["created_at"] > STATE_TTL:
             return await _fail("state 已过期，请重新发起登录")
     else:
-        print("[zhihu-callback] 回调未携带 state（协议实测偏差，已放行；建议平台确认后收紧）")
+        # 黑客松 OAuth 服务已支持 state 原样透传（官方 hackathon-oauth.md 最新说明），
+        # 正常回调必须携带 state；缺失视为异常请求，拒绝（不再放行）
+        return await _fail("回调未携带 state，请从游戏内重新发起登录")
 
     if not auth_code:
         return await _fail("回调未携带授权码（authorization_code）",
