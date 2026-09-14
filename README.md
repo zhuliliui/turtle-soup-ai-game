@@ -88,17 +88,13 @@ python main.py
 
 后端将在 `http://localhost:8000` 启动
 
-### 3. 启动前端
+### 3. 打开游戏
 
-直接用浏览器打开 `frontend/index.html`
+后端启动后直接托管前端，浏览器打开 **http://localhost:8000** 即可游玩。
 
-或者使用简单的HTTP服务器：
-```bash
-cd frontend
-python -m http.server 8080
-```
+也可以直接使用在线试玩固定链接：https://15cd6151e0904833885706cd26a4793c.app.workbuddy.host
 
-然后访问 `http://localhost:8080`
+> 知乎真实登录请从在线站点发起（OAuth 回调地址登记在云端）；本地页面发起会被自动拦截并提示。
 
 ## 🎯 游戏玩法
 
@@ -245,6 +241,12 @@ PORT=8000
 编辑 `backend/ai_host/reasoning_engine.py` 中的判断逻辑
 
 ## 🐛 常见问题
+
+**Q: 电脑关机重启后打不开本地网站？**
+A: 本地后端没有开机自启，双击 `run_backend.bat` 重新启动即可。云端固定链接不受本地开关机影响，评委随时可访问。
+
+**Q: 知乎登录报「state 无效或已过期」？**
+A: 知乎 OAuth 回调地址登记在云端，请从在线试玩站点发起登录；从本地页面发起会被后端自动拦截并给出提示。详见 `STARTUP.md` 常见问题 Q2。
 
 **Q: API调用失败？**
 A: 检查 `.env` 文件中的 `ANTHROPIC_API_KEY` 是否正确
