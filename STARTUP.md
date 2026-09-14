@@ -2,18 +2,18 @@
 
 ## 编码问题说明
 
-如果 `start.bat` 出现中文乱码，请使用以下英文版脚本。
+如果 `run_backend.bat` 出现中文乱码，请使用以下英文版脚本。
 
 ## 启动方式
 
 ### 方式1：一键启动（英文版）
-双击运行：`start_en.bat`
+双击运行：`run_backend.bat`
 
 ### 方式2：分步启动
 
 1. 安装依赖（首次运行）
    ```
-   双击 install.bat
+   双击 run_backend.bat
    ```
 
 2. 启动后端
@@ -23,7 +23,7 @@
 
 3. 启动前端（新开一个终端）
    ```
-   双击 run_frontend.bat
+   双击 run_backend.bat
    ```
 
 4. 打开浏览器
@@ -66,9 +66,9 @@ Serving HTTP on 0.0.0.0 port 8080
 
 ## 访问地址
 
-- 游戏界面: http://localhost:8080
+- 在线试玩（固定链接）: https://15cd6151e0904833885706cd26a4793c.app.workbuddy.host
+- 本地游戏界面: 运行 run_backend.bat 后打开 http://localhost:8000
 - API文档: http://localhost:8000/docs
-- API健康检查: http://localhost:8000
 
 ## 故障排查
 
@@ -117,7 +117,7 @@ ANTHROPIC_API_KEY=sk-ant-你的密钥
 ## 常见错误
 
 **错误**: `ModuleNotFoundError: No module named 'fastapi'`
-**解决**: 运行 `install.bat` 安装依赖
+**解决**: 运行 `run_backend.bat` 安装依赖
 
 **错误**: `Error: ANTHROPIC_API_KEY not found`
 **解决**: 配置 `backend\.env` 文件
