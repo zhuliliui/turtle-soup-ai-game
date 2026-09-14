@@ -13,36 +13,81 @@
         }
 
         body {
-            font-family: 'Microsoft YaHei', sans-serif;
-            /* 浅绿水彩背景图（bg.jpg），加载失败时回退到渐变色 */
-            background: #e6f2e6 url('bg.jpg') no-repeat center center;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', 'Microsoft YaHei', sans-serif;
+            background: url('skybg.webp') no-repeat center center fixed;
             background-size: cover;
             color: #2c3e2c;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* 顶部状态栏 */
+        /* 顶部状态栏（玻璃拟态 + 楷体） */
         .top-bar {
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom: 2px solid #a5d6a7;
-            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(8px);
+            border-bottom: 1.5px solid rgba(133, 196, 120, 0.35);
+            padding: 12px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 12px rgba(46, 125, 50, 0.08);
+            box-shadow: 0 2px 12px rgba(46, 125, 50, 0.06);
         }
 
+        /* 顶栏左侧：返回按钮 + 案件标题 */
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 6px 15px 6px 10px;
+            background: linear-gradient(180deg, #ffffff, #f2f8ec);
+            border: 1.5px solid #bcd9ae;
+            border-radius: 999px;
+            color: #2e4a2e;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(46, 125, 50, 0.12);
+            transition: border-color .16s, box-shadow .16s, transform .16s;
+        }
+        .back-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .back-btn:hover {
+            border-color: #8fc46a;
+            box-shadow: 0 4px 14px rgba(46, 125, 50, 0.22);
+        }
+        .back-btn:active { transform: scale(0.96); }
+
         .case-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             color: #1b5e20;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .topbar-mascot {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #fff;
+            border: 1.5px solid rgba(133, 196, 120, 0.5);
         }
 
         .status-indicators {
             display: flex;
-            gap: 30px;
+            gap: 12px;
             align-items: center;
         }
 
@@ -50,11 +95,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
-            padding: 8px 15px;
-            background: rgba(46, 125, 50, 0.06);
-            border-radius: 20px;
-            border: 1px solid rgba(46, 125, 50, 0.18);
+            font-size: 13px;
+            padding: 7px 14px;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 999px;
+            border: 1.5px solid rgba(155, 209, 143, 0.6);
             color: #33691e;
         }
 
@@ -86,12 +131,13 @@
             gap: 20px;
         }
 
-        /* 中央案件面板 */
+        /* 中央案件面板（玻璃卡） */
         .case-panel {
             flex: 1;
-            background: rgba(255, 255, 255, 0.85);
-            border-radius: 15px;
-            border: 1px solid rgba(46, 125, 50, 0.18);
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(6px);
+            border-radius: 20px;
+            border: 1.5px solid rgba(133, 196, 120, 0.45);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -100,16 +146,16 @@
 
         .case-content {
             flex: 1;
-            padding: 30px;
+            padding: 26px;
             overflow-y: auto;
         }
 
         .case-section {
-            margin-bottom: 25px;
-            padding: 24px;
-            background: rgba(232, 245, 233, 0.9);
-            border-radius: 10px;
-            border-left: 4px solid #66bb6a;
+            margin-bottom: 22px;
+            padding: 20px 22px;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 16px;
+            border: 1px solid rgba(155, 209, 143, 0.45);
         }
 
         .section-title {
@@ -118,11 +164,12 @@
             color: #2e7d32;
             margin-bottom: 12px;
             letter-spacing: 1px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
         }
 
         .section-content {
-            font-size: 17px;
-            line-height: 1.95;
+            font-size: 16.5px;
+            line-height: 1.9;
             color: #33502f;
         }
 
@@ -142,24 +189,64 @@
             border-left-color: #f9a825;
         }
 
-        /* 对话历史区 */
-        .inquiry-history {
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.65);
-            border-radius: 10px;
-            margin-bottom: 20px;
+        /* 线索来源标注：严格一行，超长省略（悬停看全文） */
+        .clue-perspective {
+            color: #7c8b7c;
+            font-size: 12px;
+            margin-top: 3px;
+            line-height: 1.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* 微信式对话气泡 */
+        /* 已知线索列表里的侦探身份行动块 */
+        .clue-identity-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1b5e20;
+            margin: 12px 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .clue-identity-note { font-size: 11px; color: #7c8b7c; font-weight: 400; }
+        #cluesList .action-card { width: 100%; text-align: left; }
+
+        /* 可拖动分隔条：拖动调整案件区/线索区宽度 */
+        .panel-resizer {
+            width: 9px;
+            flex-shrink: 0;
+            cursor: col-resize;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .panel-resizer::before {
+            content: '';
+            width: 4px;
+            height: 46px;
+            border-radius: 3px;
+            background: rgba(124, 195, 242, 0.55);
+            transition: background 0.2s ease, height 0.2s ease;
+        }
+        .panel-resizer:hover::before, .panel-resizer.dragging::before {
+            background: #4aa3e0;
+            height: 74px;
+        }
+        @media (max-width: 600px) {
+            .panel-resizer { display: none; }
+        }
+
+        /* 对话历史区（可爱气泡） */
         .inquiry-history {
             min-height: 380px;
             max-height: 68vh;
             overflow-y: auto;
             padding: 16px;
-            background: rgba(232, 245, 233, 0.6);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 16px;
             margin-bottom: 20px;
             display: flex;
             flex-direction: column;
@@ -177,21 +264,28 @@
         }
 
         .chat-avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 6px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
             background: #ffffff;
-            border: 1px solid rgba(46, 125, 50, 0.2);
+            border: 1.5px solid rgba(155, 209, 143, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .chat-bubble {
             max-width: 78%;
-            padding: 10px 14px;
+            padding: 10px 15px;
             font-size: 15px;
             line-height: 1.8;
             color: #33502f;
@@ -201,35 +295,38 @@
         }
 
         .bubble-user {
-            background: linear-gradient(135deg, #9fe26a, #8bd75c);
+            background: linear-gradient(135deg, #b8e6a3, #9bdb85);
             color: #1c3a14;
-            border-radius: 12px 2px 12px 12px;
-            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.15);
+            border-radius: 16px 4px 16px 16px;
+            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.12);
         }
 
         .bubble-ai {
-            background: #ffffff;
-            border: 1px solid rgba(46, 125, 50, 0.18);
-            border-radius: 2px 12px 12px 12px;
-            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.08);
+            background: #fdfff8;
+            border: 1px solid rgba(155, 209, 143, 0.5);
+            border-radius: 4px 16px 16px 16px;
+            box-shadow: 0 1px 4px rgba(46, 125, 50, 0.06);
         }
 
-        /* 右侧推理面板 */
+        /* 右侧推理面板（玻璃卡） */
         .reasoning-panel {
             width: 350px;
-            background: rgba(255, 255, 255, 0.85);
-            border-radius: 15px;
-            border: 1px solid rgba(46, 125, 50, 0.18);
-            padding: 20px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(6px);
+            border-radius: 20px;
+            border: 1.5px solid rgba(133, 196, 120, 0.45);
+            padding: 18px;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(46, 125, 50, 0.08);
         }
 
         .panel-section {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             padding: 15px;
-            background: rgba(232, 245, 233, 0.75);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 14px;
+            border: 1px solid rgba(155, 209, 143, 0.4);
         }
 
         .panel-section-title {
@@ -240,6 +337,45 @@
             display: flex;
             align-items: center;
             gap: 5px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+        }
+
+        /* ❓ 待解谜团：置顶面板，红色疑点标记 */
+        .panel-section.mysteries-panel {
+            background: linear-gradient(180deg, rgba(255, 246, 244, 0.92) 0%, rgba(255, 240, 236, 0.78) 100%);
+            border-color: rgba(226, 138, 122, 0.5);
+        }
+        .mystery-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 7px 2px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #b5322a;
+            font-weight: 600;
+        }
+        .mystery-item + .mystery-item { border-top: 1px dashed rgba(226, 138, 122, 0.35); }
+        .mystery-bullet {
+            flex-shrink: 0;
+            width: 19px;
+            height: 19px;
+            margin-top: 1px;
+            border-radius: 50%;
+            background: #e8452c;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: mysteryBlink 1.8s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(232, 69, 44, 0.5);
+        }
+        .mystery-text { flex: 1; min-width: 0; }
+        @keyframes mysteryBlink {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(232, 69, 44, 0.5); opacity: 1; }
+            50%      { box-shadow: 0 0 0 4px rgba(232, 69, 44, 0); opacity: .82; }
         }
 
         .ability-item {
@@ -270,23 +406,24 @@
 
         /* 底部操作区 */
         .action-bar {
-            padding: 20px 30px;
-            background: rgba(255, 255, 255, 0.9);
-            border-top: 1px solid rgba(46, 125, 50, 0.15);
+            padding: 16px 26px 20px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(8px);
+            border-top: 1.5px solid rgba(133, 196, 120, 0.35);
         }
 
         .input-area {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
         }
 
         .action-input {
             flex: 1;
-            padding: 12px 20px;
-            background: #ffffff;
-            border: 1px solid rgba(46, 125, 50, 0.28);
-            border-radius: 25px;
+            padding: 12px 22px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1.5px solid #9bd18f;
+            border-radius: 999px;
             color: #2c3e2c;
             font-size: 15px;
             outline: none;
@@ -295,7 +432,7 @@
 
         .action-input:focus {
             border-color: #66bb6a;
-            box-shadow: 0 0 10px rgba(102, 187, 106, 0.3);
+            box-shadow: 0 0 0 4px rgba(102, 187, 106, 0.15);
         }
 
         .action-buttons {
@@ -306,49 +443,58 @@
         }
 
         .btn {
-            padding: 12px 30px;
+            padding: 11px 26px;
             border: none;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: bold;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
             cursor: pointer;
-            transition: all 0.3s;
-            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            letter-spacing: 2px;
         }
 
+        .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+
         .btn-primary {
-            background: linear-gradient(135deg, #66bb6a, #43a047);
-            color: white;
+            background: linear-gradient(180deg, #d5ecd0 0%, #c3e4bc 100%);
+            color: #33501f;
+            border: 1.5px solid #85c478;
+            box-shadow: 0 2px 8px rgba(46,125,50,0.10);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(67, 160, 71, 0.4);
+            background: linear-gradient(180deg, #def3d9 0%, #cdedc5 100%);
+            box-shadow: 0 4px 12px rgba(46,125,50,0.16);
         }
 
         .btn-secondary {
-            background: rgba(46, 125, 50, 0.08);
-            color: #2e7d32;
-            border: 1px solid rgba(46, 125, 50, 0.22);
+            background: rgba(255, 255, 255, 0.8);
+            color: #5b8c57;
+            border: 1.5px solid #9bd18f;
         }
 
         .btn-secondary:hover {
-            background: rgba(46, 125, 50, 0.16);
+            background: #ffffff;
+            box-shadow: 0 3px 10px rgba(46,125,50,0.12);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ef5350, #e53935);
-            color: white;
+            background: linear-gradient(180deg, #ffb347 0%, #ff8a3d 100%);
+            color: #fff;
+            border: 1.5px solid #ff9d5c;
+            box-shadow: 0 2px 8px rgba(255, 138, 61, 0.25);
         }
 
         .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(239, 83, 80, 0.4);
+            box-shadow: 0 4px 14px rgba(255, 138, 61, 0.35);
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, #ffca28, #ffb300);
+            background: linear-gradient(180deg, #ffd66e 0%, #f0a830 100%);
             color: #5d4037;
+            border: 1.5px solid #f0b74f;
         }
 
         .btn:disabled {
@@ -364,8 +510,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(27, 94, 32, 0.35);
-            backdrop-filter: blur(6px);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(10px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -376,15 +522,15 @@
         }
 
         .modal-content {
-            background: #f6fbf4;
+            background: #ffffff;
             padding: 40px;
             border-radius: 15px;
             max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            border: 2px solid #66bb6a;
-            box-shadow: 0 10px 50px rgba(46, 125, 50, 0.25);
+            border: 2px solid #cfe8fa;
+            box-shadow: 0 10px 50px rgba(30, 136, 229, 0.15);
             color: #2c3e2c;
         }
 
@@ -396,17 +542,198 @@
             text-align: center;
         }
 
+        /* 学习挑战弹窗：纯白护眼版（遮罩不再用模糊绿） */
+        #exerciseModal {
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(10px);
+        }
+        #exerciseModal .modal-content {
+            background: #ffffff;
+            border-color: #dcead8;
+            box-shadow: 0 12px 44px rgba(46, 125, 50, 0.14);
+        }
+        #exerciseModal .exercise-opt {
+            display: block;
+            padding: 10px 14px;
+            margin: 7px 0;
+            background: #f4faf1;
+            border: 1.5px solid #d7e8d0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+        }
+        #exerciseModal .exercise-opt:hover {
+            border-color: #85c478;
+            background: #ecf7e8;
+        }
+
+        /* 底部操作按钮：贴纸质感动效图标（对齐 UI 设计讨论图标方案） */
+        .z-ico {
+            width: 29px;
+            height: 29px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: -7px;
+            margin-right: 7px;
+            flex-shrink: 0;
+            transform-origin: 50% 60%;
+            filter: drop-shadow(0 1.5px 2px rgba(35, 84, 27, 0.22));
+        }
+        .z-ico svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            overflow: visible;
+        }
+        /* 默认态：图标整体静止；仅小部件保留各自的“轻动”循环 */
+        .btn:disabled .z-ico { filter: grayscale(0.25) drop-shadow(0 1px 1px rgba(35,84,27,0.15)); opacity: .75; }
+
+        /* ── 点击反馈：整体下压 0.92 回弹（所有图标统一，优先级最高） ── */
+        .action-buttons .btn:active .z-ico,
+        .clue-item .z-ico:active {
+            animation: icoPress .34s cubic-bezier(.34, 1.56, .64, 1) both !important;
+        }
+        /* 按下触发统一下压回弹；各自循环动效让位于点击反馈 */
+        @keyframes icoPress {
+            0%   { transform: scale(1); }
+            38%  { transform: scale(0.92); }
+            100% { transform: scale(1); }
+        }
+
+        /* ── ① 提问：小乌龟侦探 + 问号气泡轻微弹跳（循环 1 次） ── */
+        .ico-ask { animation: icoAskBubble 1.9s ease-in-out infinite; }
+        @keyframes icoAskBubble {
+            0%, 62%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            70% { transform: translateY(-3px) rotate(-2deg) scale(1.03); }
+            80% { transform: translateY(0) rotate(1.6deg) scale(0.99); }
+            90% { transform: translateY(-1.4px) rotate(-1deg) scale(1.01); }
+        }
+
+        /* ── ② 猜想：灯泡发光 + 卡片边缘微颤 ── */
+        .ico-hypothesis { animation: icoHypoGlow 2.4s ease-in-out infinite; }
+        .ico-hypothesis svg { transition: filter .3s ease; }
+        @keyframes icoHypoGlow {
+            0%, 100% { transform: translateY(0) rotate(-1.4deg); }
+            45%      { transform: translateY(-1.6px) rotate(1.4deg); }
+            50%      { transform: translateY(-1.8px) rotate(1deg) scale(1.02); }
+        }
+
+        /* ── ③ 还原真相：放大镜缓慢扫光 + 拼图轻微弹跳 ── */
+        .ico-truth { animation: icoTruthScan 3.2s ease-in-out infinite; }
+        @keyframes icoTruthScan {
+            0%, 100% { transform: rotate(-5deg) translateY(0); }
+            25%      { transform: rotate(0deg) translateY(-1.6px); }
+            50%      { transform: rotate(5deg) translateY(0); }
+            75%      { transform: rotate(0deg) translateY(-1.2px); }
+        }
+
+        /* ── ④ 询问他人：气泡小点冒出（模拟说话） ── */
+        .ico-ask-person { animation: icoTalk 2.2s ease-in-out infinite; }
+        @keyframes icoTalk {
+            0%, 55%, 100% { transform: translateY(0) scale(1); }
+            68%           { transform: translateY(-1.8px) scale(1.03); }
+            82%           { transform: translateY(0) scale(0.995); }
+        }
+
+        /* ── ⑤ 学习挑战：星星闪烁 + 书页轻微翻动 ── */
+        .ico-learn { animation: icoLearnTwinkle 2.6s ease-in-out infinite; }
+        @keyframes icoLearnTwinkle {
+            0%, 100% { transform: rotate(-1.6deg) translateY(0); }
+            40%      { transform: rotate(1.6deg) translateY(-1.4px); }
+            55%      { transform: rotate(0.6deg) translateY(-2px) scale(1.02); }
+        }
+
+        /* ── ⑥ 线索：红色疑点微闪 + 线索卡轻微浮起 ── */
+        .ico-clue { animation: icoClueFloat 3s ease-in-out infinite; }
+        @keyframes icoClueFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50%      { transform: translateY(-2.2px) rotate(-3deg); }
+        }
+
+        /* 悬停时的手感：轻微放大，保留各自循环 */
+        .action-buttons .btn:hover .z-ico { filter: drop-shadow(0 3px 5px rgba(35, 84, 27, 0.3)); }
+
+        /* 线索列表里的贴纸图标 */
+        .clue-item .z-ico { width: 24px; height: 24px; margin-right: 8px; vertical-align: -5px; }
+        .clue-item .clue-text { display: inline; }
+        .clue-item { display: flex; flex-wrap: wrap; align-items: flex-start; }
+        .clue-item .clue-text { flex: 1; min-width: 0; }
+        .clue-item .clue-perspective { flex-basis: 100%; padding-left: 32px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .z-ico, .ico-ask, .ico-hypothesis, .ico-truth, .ico-ask-person, .ico-learn, .ico-clue { animation: none; }
+        }
+
         /* 启动界面 */
         .start-screen {
             padding: 40px;
             text-align: center;
         }
 
+        /* 首页（开始页）：去掉白色大卡片，让水彩背景直接透出来 */
+        #startModal {
+            background: transparent;
+            backdrop-filter: none;
+            /* 开始页不出现滚动栏：内容自适应一屏放下 */
+            overflow: hidden;
+            padding: 10px 0;
+        }
+        #startModal .modal-content {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 6px 20px 10px;
+            /* 去掉 80vh 限制与自身滚动，让内容直接落在背景上 */
+            max-height: none;
+            overflow: visible;
+        }
+        #startModal ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        /* 压缩垂直留白 + logo 尺寸，保证一屏内完整显示 */
+        #startModal .start-screen { padding: 2px 10px 4px; }
+        #startModal .start-logo-wrap { width: 400px; margin-bottom: 0; }
+        #startModal .start-section-title { font-size: 25px !important; margin: 2px 0 8px !important; }
+        #startModal .start-actions { gap: 8px !important; margin-bottom: 8px !important; }
+        #startModal .mode-pills { margin-bottom: 8px !important; }
+        #startModal .pill-btn { padding: 9px 26px; font-size: 19px; }
+        #startModal .mode-pill { padding: 8px 22px; font-size: 17px; }
+        #startModal #startBtn { margin-top: 4px !important; }
+        @media (max-width: 600px) {
+            #startBtn .start-wordart { width: 195px; }
+            .start-logo-wrap img:nth-of-type(1) { --tx: -6px !important; }
+            .start-logo-wrap img:nth-of-type(2) { --tx: 4px !important; }
+            .start-logo-wrap img:nth-of-type(3) { --tx: 10px !important; }
+        }
+
+        /* 各弹窗标题共用（个人资料 / 知乎故事改编 / 询问他人） */
         .start-title {
-            font-size: 48px;
             font-weight: bold;
             color: #1b5e20;
-            margin-bottom: 20px;
+        }
+
+        /* 海龟汤标题：透明底三字，逐字弹跳 */
+        .logo-bounce {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 900 / 408;
+            margin: 0 auto 8px;
+        }
+        .logo-bounce img {
+            position: absolute;
+            height: auto;
+            transform-origin: 50% 100%;
+            animation: charBounce 2.8s ease-in-out infinite;
+            will-change: transform;
+        }
+        .logo-bounce img:nth-child(1) { animation-delay: 0s; }
+        .logo-bounce img:nth-child(2) { animation-delay: 0.22s; }
+        .logo-bounce img:nth-child(3) { animation-delay: 0.44s; }
+        @keyframes charBounce {
+            0%, 100% { transform: translate(var(--tx, 0px), 0) rotate(-2.2deg); }
+            50%      { transform: translate(var(--tx, 0px), -4%) rotate(2.4deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .logo-bounce img { animation: none; }
         }
 
         .form-group {
@@ -449,6 +776,8 @@
             background: rgba(102, 187, 106, 0.5);
             border-radius: 4px;
         }
+
+        /* 开始页不需要滚动条：见 #startModal 规则（滚动条已隐藏） */
 
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(102, 187, 106, 0.7);
@@ -549,40 +878,47 @@
         .upload-btn:active {
             transform: scale(0.96);
         }
-        /* 个人资料悬浮卡（开始页右侧，进入游戏自动隐藏） */
+        /* 个人资料：右上角圆形动图入口（进入游戏自动隐藏） */
         #profileFab {
             position: fixed;
-            right: 48px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 7px;
-            padding: 22px 28px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid #66bb6a;
-            border-radius: 20px;
-            box-shadow: 0 6px 24px rgba(46, 125, 50, 0.25);
+            right: 40px;
+            top: 34px;
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            overflow: hidden;
             cursor: pointer;
-            transition: all 0.2s ease;
+            background: #eef4ea;
+            border: 2.5px solid #fff;
+            box-shadow: 0 4px 16px rgba(46, 125, 50, 0.28);
+            transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.22s ease;
             /* 必须高于 .modal 遮罩(1000)，否则会被遮罩盖住变模糊且点不到 */
             z-index: 1001;
         }
         #profileFab:hover {
-            transform: translateY(-50%) scale(1.06);
-            border-color: #66bb6a;
+            transform: scale(1.09);
+            box-shadow: 0 6px 22px rgba(46, 125, 50, 0.4);
         }
-        #profileFab .fab-icon { font-size: 36px; }
-        #profileFab .fab-level {
-            font-size: 16px;
-            font-weight: 700;
-            color: #ffffff;
-            background: #66bb6a;
-            padding: 3px 14px;
-            border-radius: 14px;
+        #profileFab:active { transform: scale(0.94); }
+        /* 猫咪头像轻摇摆（动态感） */
+        @keyframes fabSway {
+            0%, 78%, 100% { transform: rotate(0deg) translateY(0); }
+            84% { transform: rotate(-5deg) translateY(-2px); }
+            90% { transform: rotate(4deg) translateY(-1px); }
+            95% { transform: rotate(-2deg) translateY(0); }
         }
-        #profileFab .fab-text { font-size: 15px; color: #2e7d32; font-weight: 700; }
+        #profileFab .fab-video { animation: fabSway 3.6s ease-in-out infinite; transform-origin: 50% 88%; }
+        /* 圆形头像：静态图铺满并居中裁切（原为动图视频，已替换） */
+        #profileFab .fab-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+            border-radius: 50%;
+            pointer-events: none;
+            filter: saturate(1.05) brightness(1.04);
+        }
         #startModal:not(.active) ~ #profileFab { display: none; }
         /* 询问他人弹窗：人物选择chip */
         .person-chip {
@@ -605,16 +941,871 @@
         }
         @media (max-width: 1150px) {
             #profileFab {
-                right: 14px;
-                top: auto;
-                bottom: 18px;
-                transform: none;
-                padding: 10px 14px;
-                border-radius: 14px;
+                right: 16px;
+                top: 16px;
+                width: 54px;
+                height: 54px;
             }
-            #profileFab:hover { transform: scale(1.06); }
-            #profileFab .fab-icon { font-size: 22px; }
         }
+        @media (max-width: 600px) {
+            #profileFab { width: 46px; height: 46px; right: 12px; top: 12px; }
+        }
+
+        /* 开始页 logo 容器 + 小猫装饰 */
+        .start-logo-wrap {
+            position: relative;
+            display: block;
+            width: 560px;
+            max-width: 94%;
+            margin: 0 auto 8px;
+        }
+        .start-logo-wrap .start-logo { margin-bottom: 0; }
+        .start-mascot {
+            position: absolute;
+            width: 96px;
+            height: 96px;
+            right: -18px;
+            bottom: -22px;
+            z-index: 2;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+            filter: drop-shadow(0 4px 8px rgba(46,125,50,0.18));
+        }
+        @media (max-width: 600px) {
+            .start-mascot { width: 72px; height: 72px; right: -6px; bottom: -14px; }
+        }
+
+        /* === 开始页统一按钮体系：楷体手写 + 扁平浅绿胶囊（对齐设计图） === */
+        .pill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: min(500px, 90%);
+            margin: 0 auto;
+            padding: 16px 28px;
+            border: 1.5px solid #7cc3f2;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #dbeeff 0%, #c2e6fd 100%);
+            color: #14486e;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 25px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(46,125,50,0.10);
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+        .pill-btn:hover {
+            background: linear-gradient(180deg, #e6f4ff 0%, #cfeefd 100%);
+            box-shadow: 0 4px 14px rgba(30,136,229,0.18);
+            transform: translateY(-1px);
+        }
+        .pill-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(46,125,50,0.12);
+        }
+        /* 浅一点的薄荷款（一句话开局） */
+        .pill-mint {
+            background: linear-gradient(180deg, #f0f9ff 0%, #dcefff 100%);
+            border-color: #a8d8f5;
+        }
+        .pill-mint:hover {
+            background: linear-gradient(180deg, #f6fcff 0%, #e6f4ff 100%);
+        }
+        .pill-btn .pill-icon {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: none;
+        }
+        .pill-btn .pill-icon img {
+            width: 33px; height: 33px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+        /* 「一句话开局」前的圆形图标（复用 pill 内图标位；已由动图改为静态图） */
+        .pill-btn .pill-video {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eef4ea;
+        }
+        .pill-btn .pill-video img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+            pointer-events: none;
+        }
+
+        /* 「开始」按钮：白底 + 橙红渐变文字（最显眼的主操作） */
+        .pill-btn-start {
+            background: #ffffff;
+            border: 1.5px solid #f0f3ee;
+            color: transparent;
+            background-image:
+                linear-gradient(#fff, #fff),
+                linear-gradient(180deg, #ffb347 0%, #ff7a3d 100%);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        .pill-btn-start .start-text {
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            margin-right: -8px;
+            background: linear-gradient(180deg, #ffb347 0%, #ff7a3d 60%, #f4511e 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            filter: drop-shadow(0 1px 0 rgba(0,0,0,0.08));
+        }
+        .pill-btn-start:hover {
+            background-image:
+                linear-gradient(#fff, #fff),
+                linear-gradient(180deg, #ffc16a 0%, #ff8a4d 100%);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+
+        /* 首页「开始」：橙白气泡字标图（start.png），透明无底块 */
+        #startBtn {
+            width: auto;
+            margin-top: 10px;
+            padding: 4px 10px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            -webkit-mask: none;
+            mask: none;
+        }
+        #startBtn:hover {
+            background: transparent;
+            background-image: none;
+            transform: scale(1.06);
+            box-shadow: none;
+        }
+        #startBtn:active { transform: scale(0.97); }
+        #startBtn .start-wordart {
+            display: block;
+            width: 265px;
+            height: auto;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        /* 一句话弹窗确认按钮：直接放「开始」字标图（透明底） */
+        .btn-wordart {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 2px 8px;
+            -webkit-mask: none;
+            mask: none;
+        }
+        .btn-wordart:hover {
+            background: transparent;
+            background-image: none;
+            transform: scale(1.05);
+            box-shadow: none;
+        }
+        .btn-wordart:active { transform: scale(0.97); }
+        .btn-wordart .start-wordart { display: block; width: 195px; height: auto; }
+
+        /* 个人资料：极简线条图标（图3风格）+ 悬停跳动 */
+        .p-icon {
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+        @keyframes iconJump {
+            0%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+            55% { transform: translateY(0); }
+            75% { transform: translateY(-2px); }
+        }
+        .p-card:hover .p-icon { animation: iconJump 0.55s ease; }
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            background: rgba(102,187,106,0.12);
+            border: 1px solid #c8dcc8;
+            border-radius: 14px;
+            margin-bottom: 16px;
+        }
+        .stat-divider { width: 1px; height: 32px; background: #c8dcc8; }
+        .sec-head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 700;
+            color: #2e7d32;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .rec-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.75);
+            border-radius: 10px;
+            border: 1px solid rgba(46,125,50,0.12);
+        }
+
+        /* 模式选择：娱乐 / 学习 pill toggle */
+        .mode-pills {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            width: min(440px, 88%);
+            margin: 0 auto;
+        }
+        .mode-pill {
+            flex: 1;
+            padding: 15px 16px;
+            border: 1.5px solid #a5d3f0;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.55);
+            color: #4a7ea8;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 23px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            text-align: center;
+            user-select: none;
+        }
+        .mode-pill:hover {
+            background: rgba(255,255,255,0.78);
+            border-color: #7fc07a;
+        }
+        .mode-pill.active {
+            background: linear-gradient(180deg, #dbeeff 0%, #c2e6fd 100%);
+            border-color: #7cc3f2;
+            color: #14486e;
+            box-shadow: 0 2px 8px rgba(30,136,229,0.12);
+        }
+
+        /* 「× 关闭」等次要按钮：小号胶囊，浅色边框 */
+        .pill-btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: 1.5px solid #a8d8a0;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.78);
+            color: #2e7d32;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .pill-btn-ghost:hover {
+            background: rgba(255,255,255,0.95);
+            border-color: #66bb6a;
+        }
+
+        /* 个人资料里继续上局卡片 */
+        .resume-card {
+            margin-bottom: 14px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(255,236,179,0.7), rgba(255,224,130,0.55));
+            border: 1.5px solid #f0c14b;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(240,193,75,0.18);
+        }
+        .resume-card .resume-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+        .resume-card .resume-info { flex: 1; min-width: 0; }
+        .resume-card .resume-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #8a6500;
+            margin-bottom: 2px;
+        }
+        .resume-card .resume-case {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2c3e2c;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .resume-card .resume-meta {
+            font-size: 12px;
+            color: #6b7a6b;
+            margin-top: 2px;
+        }
+        .resume-card .resume-go {
+            padding: 8px 16px;
+            background: linear-gradient(180deg, #ffd66e 0%, #f0a830 100%);
+            border: none;
+            border-radius: 999px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(240,168,48,0.35);
+            flex-shrink: 0;
+        }
+
+        /* 一句话开局弹窗专用 */
+        #sentenceDialog .form-textarea {
+            min-height: 90px;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .sentence-preview {
+            margin-top: 10px;
+            padding: 11px 14px;
+            background: rgba(102,187,106,0.12);
+            border: 1px solid #c8dcc8;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sentence-preview .pv-text {
+            flex: 1;
+            color: #2e4a2e;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+        .sentence-preview .pv-edit {
+            background: none;
+            border: none;
+            color: #2e7d32;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* ============ 个人资料弹窗（仿设计图：奶油卡片 + 深绿等级条 + 橙色继续） ============ */
+        .profile-modal-content {
+            max-width: 600px;
+            max-height: 88vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0;
+        }
+        .profile-sheet {
+            position: relative;
+            padding: 26px 30px 28px;
+            border-radius: 26px;
+            background:
+                radial-gradient(circle at 12% 8%, rgba(150, 200, 120, 0.16) 0 6px, transparent 7px),
+                radial-gradient(circle at 88% 30%, rgba(150, 200, 120, 0.14) 0 5px, transparent 6px),
+                radial-gradient(circle at 22% 92%, rgba(212, 168, 60, 0.16) 0 5px, transparent 6px),
+                radial-gradient(circle at 92% 88%, rgba(212, 168, 60, 0.14) 0 4px, transparent 5px),
+                linear-gradient(160deg, #fbfdf1 0%, #f6f8e4 55%, #f1f4da 100%);
+            border: 1.5px solid rgba(160, 190, 130, 0.45);
+            box-shadow: 0 14px 46px rgba(60, 90, 45, 0.18), inset 0 1px 0 rgba(255,255,255,0.9);
+            text-align: left;
+        }
+        .profile-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .profile-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e4d18;
+            letter-spacing: 2px;
+        }
+        .profile-title-ico { width: 34px; height: 34px; display: inline-flex; flex-shrink: 0; }
+        .profile-title-ico svg { width: 100%; height: 100%; }
+        .profile-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            margin-bottom: 18px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #3d7231 0%, #2f5f26 100%);
+            border: 1.5px solid #275020;
+            box-shadow: 0 5px 16px rgba(40, 80, 30, 0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-banner::after {
+            content: '';
+            position: absolute;
+            right: 34%; top: 50%;
+            width: 8px; height: 8px;
+            margin-top: -4px;
+            border-radius: 50%;
+            background: #f2a03c;
+            box-shadow: 0 0 0 0 rgba(242,160,60,.5);
+        }
+        .profile-banner::before {
+            content: '';
+            position: absolute;
+            right: 20%; bottom: 6px;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #e8892f;
+        }
+        .profile-trophy { width: 38px; height: 38px; flex-shrink: 0; display: inline-flex; }
+        .profile-trophy svg { width: 100%; height: 100%; }
+        .profile-level {
+            font-family: 'Arial Black', 'KaiTi', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            color: #fffdf2;
+            text-shadow: 0 2px 0 rgba(0,0,0,0.22), 0 0 1px rgba(0,0,0,.3);
+            letter-spacing: 1px;
+        }
+        .profile-banner-divider {
+            width: 2px;
+            height: 30px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.55);
+            margin: 0 4px;
+        }
+        .profile-rate {
+            flex: 1;
+            text-align: right;
+            color: #fbfdf1;
+            font-size: 19px;
+            font-weight: 700;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.18);
+        }
+        .profile-sec-head {
+            color: #1e4d18;
+            font-size: 16px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            letter-spacing: 1px;
+        }
+        .profile-sec-ico { width: 21px; height: 21px; display: inline-flex; flex-shrink: 0; }
+        .profile-sec-ico svg { width: 100%; height: 100%; }
+        .profile-records {
+            max-height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            padding: 3px;
+        }
+        /* 完成案件条目：奶油底 + 细边框 + 失败红叉 */
+        .profile-records .rec-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 16px;
+            background: linear-gradient(180deg, #fffdf5 0%, #faf8ea 100%);
+            border: 1.5px solid #d9e3c4;
+            border-radius: 15px;
+            box-shadow: 0 2px 6px rgba(90, 120, 70, 0.08);
+        }
+        .profile-records .rec-row .rec-ico {
+            width: 26px; height: 26px; flex-shrink: 0; display: inline-flex;
+            align-items: center; justify-content: center;
+        }
+        .profile-records .rec-row .rec-ico svg { width: 100%; height: 100%; }
+        .profile-records .rec-title {
+            flex: 1; min-width: 0;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 18px; font-weight: 700; color: #2c3e2c;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            text-align: center;
+        }
+        .profile-records .rec-right { text-align: right; flex-shrink: 0; }
+        .profile-records .rec-result { font-size: 15px; font-weight: 800; }
+        .profile-records .rec-result.win { color: #2e7d32; }
+        .profile-records .rec-result.lose { color: #c62828; }
+        .profile-records .rec-time { font-size: 12px; color: #8a9678; margin-top: 1px; }
+        .profile-records .rec-empty {
+            color: #8a9678; font-size: 14px; text-align: center; padding: 22px 0;
+        }
+        /* 继续上局：橙色主按钮（仿设计图） */
+        .profile-resume-btn {
+            width: 100%;
+            margin-top: 4px;
+            padding: 15px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-radius: 16px;
+            border: 1.5px solid #f0a04a;
+            background: linear-gradient(180deg, #ffe6a8 0%, #ffd17a 45%, #ffbe5c 100%);
+            box-shadow: 0 5px 14px rgba(240, 160, 60, 0.3), inset 0 1px 0 rgba(255,255,255,0.85);
+            cursor: pointer;
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+        .profile-resume-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(240,160,60,0.4); }
+        .profile-resume-btn:active { transform: translateY(0) scale(0.985); }
+        .profile-resume-btn .prb-label {
+            flex: 1;
+            text-align: center;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7a4a10;
+            letter-spacing: 6px;
+        }
+        .profile-resume-btn .prb-go {
+            flex-shrink: 0;
+            padding: 8px 22px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #ff9d3c 0%, #f47f22 100%);
+            border: 1.5px solid #e5711a;
+            color: #fff;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            box-shadow: 0 2px 6px rgba(216, 100, 20, 0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        /* ============ 询问他人弹窗（仿设计图） ============ */
+        .ask-person-content {
+            max-width: 460px;
+            max-height: 92vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0;
+        }
+        #askPersonModal {
+            background: rgba(246, 249, 236, 0.82);
+            backdrop-filter: blur(8px);
+        }
+        .ask-person-sheet {
+            position: relative;
+            padding: 26px 30px 28px;
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at 90% 6%, rgba(150, 200, 120, 0.16) 0 6px, transparent 7px),
+                radial-gradient(circle at 8% 94%, rgba(212, 168, 60, 0.16) 0 6px, transparent 7px),
+                linear-gradient(165deg, #fbfdf2 0%, #f7f9e8 60%, #f2f5dd 100%);
+            border: 1.5px solid rgba(160, 190, 130, 0.5);
+            box-shadow: 0 12px 40px rgba(60, 90, 45, 0.16), inset 0 1px 0 rgba(255,255,255,0.9);
+            text-align: left;
+        }
+        .ask-person-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .ask-person-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 27px;
+            font-weight: 700;
+            color: #1e4d18;
+            letter-spacing: 3px;
+        }
+        .ap-title-ico { width: 32px; height: 32px; display: inline-flex; flex-shrink: 0; }
+        .ap-title-ico svg { width: 100%; height: 100%; }
+        .ap-close { font-size: 15px; padding: 8px 18px; }
+        .ask-person-sub {
+            color: #6d7a5e;
+            font-size: 13px;
+            line-height: 1.65;
+            margin: 0 0 18px;
+        }
+        .ap-chip-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 16px;
+            border-radius: 999px;
+            background: #dcefc0;
+            border: 1.5px solid #a9d07f;
+            color: #2f5f26;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .ap-chip-ico { width: 22px; height: 22px; display: inline-flex; flex-shrink: 0; }
+        .ap-chip-ico svg { width: 100%; height: 100%; }
+        .ap-bubble { width: 38px; height: 29px; display: inline-flex; margin-left: 4px; }
+        .ap-bubble svg { width: 100%; height: 100%; }
+        .ap-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-bottom: 14px;
+        }
+        /* 彩色角色 chip：轮转四种配色，仿设计图 */
+        .ap-chips .person-chip {
+            padding: 9px 18px;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            letter-spacing: 1px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+            background: linear-gradient(180deg, #eef8e0 0%, #dcefc0 100%);
+            border: 1.5px solid #8fc46a;
+            color: #2f5f26;
+            box-shadow: 0 2px 5px rgba(90, 130, 70, 0.12);
+        }
+        .ap-chips .person-chip:nth-child(4n+2) {
+            background: linear-gradient(180deg, #fdefd6 0%, #fbdcae 100%);
+            border-color: #eda94f;
+            color: #8a5a12;
+        }
+        .ap-chips .person-chip:nth-child(4n+3) {
+            background: linear-gradient(180deg, #e6f4fb 0%, #cbe6f6 100%);
+            border-color: #7fbfe0;
+            color: #1f5a7a;
+        }
+        .ap-chips .person-chip:nth-child(4n) {
+            background: linear-gradient(180deg, #dff5ea 0%, #c3e9d8 100%);
+            border-color: #6fc4a3;
+            color: #1f6b52;
+        }
+        .ap-chips .person-chip:hover { transform: translateY(-1.5px); box-shadow: 0 4px 10px rgba(90, 130, 70, 0.2); }
+        .ap-chips .person-chip.selected {
+            filter: saturate(1.15) brightness(0.97);
+            box-shadow: 0 0 0 2.5px rgba(126, 190, 90, 0.4), 0 3px 9px rgba(90, 130, 70, 0.22);
+            transform: translateY(-1px);
+        }
+        .ap-input, .ap-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: #fdfef8;
+            border: 1.5px solid #b9cf9a;
+            border-radius: 12px;
+            color: #2c3e2c;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        .ap-input::placeholder, .ap-textarea::placeholder { color: #9aa88c; }
+        .ap-input:focus, .ap-textarea:focus {
+            border-color: #7fbf5c;
+            box-shadow: 0 0 0 3px rgba(127, 191, 92, 0.16);
+        }
+        .ap-textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
+        .ap-confirm {
+            display: block;
+            width: 100%;
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1.5px solid #f0a04a;
+            background: linear-gradient(180deg, #ffe6a8 0%, #ffd17a 45%, #ffbe5c 100%);
+            box-shadow: 0 5px 14px rgba(240, 160, 60, 0.32), inset 0 1px 0 rgba(255,255,255,0.85);
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            text-indent: 8px;
+            color: #1e4d18;
+            cursor: pointer;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+        }
+        .ap-confirm:hover {
+            background: linear-gradient(180deg, #ffeec0 0%, #ffd98a 45%, #ffc66b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(240, 160, 60, 0.42);
+        }
+        .ap-confirm:active { transform: translateY(0) scale(0.985); }
+
+        /* ============ 学习材料弹窗（复用询问他人的奶油质感，去掉学科字段） ============ */
+        .learn-dialog-content {
+            max-width: 500px;
+            max-height: 92vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0;
+        }
+        #learningDialog {
+            background: rgba(246, 249, 236, 0.82);
+            backdrop-filter: blur(8px);
+        }
+        .learn-sheet {
+            position: relative;
+            padding: 26px 30px 26px;
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at 90% 6%, rgba(150, 200, 120, 0.16) 0 6px, transparent 7px),
+                radial-gradient(circle at 8% 94%, rgba(212, 168, 60, 0.16) 0 6px, transparent 7px),
+                linear-gradient(165deg, #fbfdf2 0%, #f7f9e8 60%, #f2f5dd 100%);
+            border: 1.5px solid rgba(160, 190, 130, 0.5);
+            box-shadow: 0 12px 40px rgba(60, 90, 45, 0.16), inset 0 1px 0 rgba(255,255,255,0.9);
+            text-align: left;
+        }
+        .learn-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .learn-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 27px;
+            font-weight: 700;
+            color: #1e4d18;
+            letter-spacing: 3px;
+        }
+        .learn-title-ico { width: 32px; height: 32px; display: inline-flex; flex-shrink: 0; }
+        .learn-title-ico svg { width: 100%; height: 100%; }
+        .learn-tip {
+            color: #6d7a5e;
+            font-size: 13px;
+            line-height: 1.65;
+            margin: 0 0 16px;
+        }
+
+        /* 上传投放区 */
+        .learn-drop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 22px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 2px dashed #a9d07f;
+            cursor: pointer;
+            transition: background .18s ease, border-color .18s ease, transform .18s ease;
+            text-align: center;
+        }
+        .learn-drop:hover { background: #f4fbe8; border-color: #7fbb52; transform: translateY(-1px); }
+        .learn-drop.dragover {
+            background: #eaf7d8;
+            border-color: #5da335;
+            transform: scale(1.01);
+        }
+        .learn-drop-ico { display: flex; margin-bottom: 2px; }
+        .learn-drop-main { font-size: 15px; font-weight: 700; color: #2f5f26; }
+        .learn-drop-sub { font-size: 12px; color: #8a9678; line-height: 1.5; }
+
+        .learn-hint { font-size: 13px; margin: 9px 2px 0; line-height: 1.6; }
+
+        /* 分隔线 */
+        .learn-or {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0 9px;
+            color: #9aa88a;
+            font-size: 12px;
+        }
+        .learn-or::before,
+        .learn-or::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(150, 190, 120, 0.55), transparent);
+        }
+
+        .learn-textarea {
+            min-height: 108px;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.85);
+        }
+        .learn-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .learn-count { font-size: 12px; color: #8a9678; flex-shrink: 0; }
+        .learn-confirm {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 30px;
+            border-radius: 16px;
+            border: 1.5px solid #f0a04a;
+            background: linear-gradient(180deg, #ffe6a8 0%, #ffd17a 45%, #ffbe5c 100%);
+            box-shadow: 0 5px 14px rgba(240, 160, 60, 0.32), inset 0 1px 0 rgba(255,255,255,0.85);
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-indent: 5px;
+            color: #1e4d18;
+            cursor: pointer;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+        }
+        .learn-confirm:hover {
+            background: linear-gradient(180deg, #ffeec0 0%, #ffd98a 45%, #ffc66b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(240, 160, 60, 0.42);
+        }
+        .learn-confirm:active { transform: translateY(0) scale(0.985); }
+        .learn-confirm .lcb-go { font-size: 20px; text-indent: 0; letter-spacing: 0; }
+
+        /* ============ 游戏界面：整体字号略微放大（只作用于 #gameScreen，不影响开始页/弹窗） ============ */
+        #gameScreen .case-title { font-size: 24px; }
+        #gameScreen .status-item { font-size: 17px; }
+        #gameScreen .status-value { font-size: 19px; }
+        #gameScreen .section-title { font-size: 19.5px; }
+        #gameScreen .section-content { font-size: 18px; line-height: 1.95; }
+        #gameScreen .clue-item { font-size: 16px; }
+        #gameScreen .clue-perspective { font-size: 13.5px; }
+        #gameScreen .clue-identity-title { font-size: 14.5px; }
+        #gameScreen .clue-identity-note { font-size: 12.5px; }
+        #gameScreen .panel-section-title { font-size: 16.5px; }
+        #gameScreen .mystery-item { font-size: 15.5px; }
+        #gameScreen .action-input { font-size: 16.5px; }
+        #gameScreen .btn { font-size: 16.5px; }
+        #gameScreen .chat-bubble { font-size: 16.5px; }
+        #gameScreen .chat-avatar { font-size: 19px; }
     </style>
 </head>
 <body data-page-node-id="OdIevaQo751o0qp1rbcAfr">
@@ -622,109 +1813,211 @@
     <div id="startModal" class="modal active" data-page-node-id="FwEUJsPMHHba8ASV8wmD4P">
         <div class="modal-content" data-page-node-id="0z4WSjuD33rKVkIcFOT5NK">
             <div class="start-screen" data-page-node-id="RTu3q7bqFJdLfSBwSwrHHq">
-                <h1 class="start-title" data-page-node-id="9kQU4WqcSrZ3ASjNY1nyH4">🧩 海龟汤推理游戏</h1>
-                <p style="color: #5c6e5c; margin-bottom: 24px;" data-page-node-id="ukv39eslNiT7XchAhMwcdU">知识 × 推理 × 成长</p>
-
-                <!-- 知乎账号（黑客松 OAuth 接入；未配置凭证时为演示模式） -->
-                <div id="zhihuBar" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.75); border: 1px solid rgba(46,125,50,0.18); border-radius: 12px; margin-bottom: 22px;">
-                    <div id="zhihuAvatar" style="width: 34px; height: 34px; border-radius: 50%; background: #e8f0e8; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; overflow: hidden;">知乎</div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div id="zhihuName" style="font-size: 14px; font-weight: 700; color: #2e4a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">未登录知乎</div>
-                        <div id="zhihuHint" style="font-size: 12px; color: #7c8b7c; margin-top: 1px;">登录后可在作品页展示账号身份</div>
-                    </div>
-                    <button id="zhihuLoginBtn" class="btn" onclick="zhihuLogin()" style="padding: 7px 14px; background: #0066ff; border: none; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;">登录知乎</button>
-                    <button id="zhihuLogoutBtn" class="btn hidden" onclick="zhihuLogout()" style="padding: 7px 14px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; color: #5c6e5c; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;">退出</button>
-                </div>
-
-                <!-- 开局方式：二选一 -->
-                <div class="form-group">
-                    <label class="form-label">🎯 开局方式（二选一）</label>
-                    <div style="display: flex; gap: 8px; margin-bottom: 4px;">
-                        <button type="button" id="tabSentence" onclick="switchStartMode('sentence')" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #66bb6a; background: #e8f5e9; color: #2e7d32;">🎭 一句话开局</button>
-                        <button type="button" id="tabStory" onclick="switchStartMode('story')" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #d5e0d5; background: rgba(255,255,255,0.8); color: #7c8b7c;">📖 知乎故事改编</button>
+                <div class="start-logo-wrap" data-page-node-id="9kQU4WqcSrZ3ASjNY1nyH4">
+                    <div class="logo-bounce" aria-label="海龟汤">
+                        <img src="logo_hai.png" alt="海" style="left: 1.22%; top: 1.96%; width: 40.44%; --tx: -14px;">
+                        <img src="logo_gui.png" alt="龟" style="left: 36.78%; top: 2.21%; width: 31.11%; --tx: 8px;">
+                        <img src="logo_tang.png" alt="汤" style="left: 64.67%; top: 6.86%; width: 34.22%; --tx: 22px;">
                     </div>
                 </div>
 
-                <div id="sentencePanel">
-                    <!-- 一句话开局（身份+事件写在一句话里，如"我是一个学生"或"小明昨晚失踪了。我是他的老师"） -->
-                    <div class="form-group" data-page-node-id="quickStartGroup">
-                        <input type="text" id="quickSentence" class="form-input" style="width: 100%;" placeholder="例如：我是一个学生　或　小明昨晚失踪了。我是他的老师" maxlength="200">
-                        <p style="color: #7c8b7c; font-size: 13px; margin-top: 8px;">一句话说明你的身份和事件即可，只写身份（如"我是一个学生"）也可以；填好后点下方「开始游戏」</p>
-                    </div>
-                </div>
+                <!-- 开局方式：两个独立 pill（楷体手写） -->
+                <div class="start-section-title" style="font-family: 'KaiTi','STKaiti','楷体','Kaiti SC',cursive; font-size: 32px; font-weight: 700; color: #1f6fa8; margin: 8px 0 14px; text-align: center; letter-spacing: 8px;" data-start-section>开局方式</div>
 
-                <div id="storyPanel" class="hidden">
-                    <button id="zhihuStoryBtn" class="btn" onclick="openZhihuStories()" style="width: 100%; padding: 12px; background: rgba(0,102,255,0.08); border: 1px solid rgba(0,102,255,0.35); color: #0052cc; border-radius: 10px; font-size: 14px; font-weight: 600;">
-                        📖 选择一个知乎故事
+                <!-- 一句话：写入隐藏 quickSentence 后 startGame 读取 -->
+                <input type="hidden" id="quickSentence">
+                <div class="start-actions" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;">
+                    <button type="button" class="pill-btn" onclick="openZhihuStories()" style="margin: 0 auto;">
+                        <span class="pill-icon"><img src="cat.webp" alt=""></span>
+                        知乎故事改编
                     </button>
-                    <div id="zhihuAttribution" class="hidden" style="margin-top: 10px; padding: 8px 12px; background: rgba(0,102,255,0.06); border-radius: 8px; color: #0052cc; font-size: 12px; text-align: center;"></div>
-                    <p style="color: #7c8b7c; font-size: 13px; margin-top: 8px;">AI 把知乎故事改编成可推理的汤面（不剧透原文），娱乐/学习模式均可选；学习模式下学习材料仍由你在下方自行提供</p>
+                    <div id="zhihuAttribution" class="hidden" style="margin-top: -6px; padding: 6px 10px; background: rgba(0,102,255,0.06); border-radius: 8px; color: #0052cc; font-size: 12px; text-align: center;"></div>
+                    <button type="button" class="pill-btn pill-mint" onclick="openSentenceDialog()" style="margin: 0 auto;">
+                        <span class="pill-video"><img src="cat.webp" alt=""></span>
+                        一句话开局
+                    </button>
+                    <div id="sentencePreview" class="sentence-preview hidden">
+                        <span style="font-size: 18px; flex-shrink: 0;">📝</span>
+                        <span class="pv-text" id="sentencePreviewText"></span>
+                        <button type="button" class="pv-edit" onclick="openSentenceDialog()">修改</button>
+                    </div>
                 </div>
 
-                <div class="form-group" data-page-node-id="WlZgsjI5plxwtSCyxBw3uH">
-                    <label class="form-label" data-page-node-id="QjFblZeVZQAvh8GSyBzMKC">游戏模式</label>
-                    <select id="modeSelect" class="form-select" data-page-node-id="RMG1n1TdDFLzwzBo1uPzJJ">
-                        <option value="entertainment" data-page-node-id="KdrrAonrYRqYXNhFhAtzlN">娱乐模式 - 纯推理体验</option>
-                        <option value="learning" data-page-node-id="202ujoU5JQxspBoozNRIlN">学习模式 - 答题获得增益</option>
-                    </select>
+                <!-- 模式：娱乐 / 学习 pill toggle -->
+                <div class="start-section-title" style="font-family: 'KaiTi','STKaiti','楷体','Kaiti SC',cursive; font-size: 32px; font-weight: 700; color: #1f6fa8; margin: 4px 0 14px; text-align: center; letter-spacing: 8px;" data-start-section>模式</div>
+                <!-- 隐藏原 select 以兼容 startGame() 读取 -->
+                <select id="modeSelect" class="form-select hidden" data-page-node-id="RMG1n1TdDFLzwzBo1uPzJJ">
+                    <option value="entertainment" data-page-node-id="KdrrAonrYRqYXNhFhAtzlN">娱乐模式</option>
+                    <option value="learning" data-page-node-id="202ujoU5JQxspBoozNRIlN">学习模式</option>
+                </select>
+                <div class="mode-pills" id="modePills" style="margin-bottom: 12px;">
+                    <button type="button" class="mode-pill active" data-mode="entertainment">娱乐模式</button>
+                    <button type="button" class="mode-pill" data-mode="learning">学习模式</button>
                 </div>
 
+                <!-- 学习模式：改为弹窗配置（材料上传/粘贴），学科字段已移除 -->
                 <div id="learningOptions" class="hidden" data-page-node-id="08TfBo14FfBwW5hu7AIT9j">
-                    <div class="form-group" data-page-node-id="yow57evnCWfqmRh4ILQbTg">
-                        <label class="form-label" data-page-node-id="M8mxto6oDLeUmh5dPNCFsF">学科</label>
-                        <input type="text" id="subjectInput" class="form-input" placeholder="例如：生物、物理、历史..." data-page-node-id="Qr28m2qWnrBtxNA7fyeWU8">
-                    </div>
-                    <div class="form-group" data-page-node-id="GBLRX6ASY8lyqxsyHt4xh5">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <label class="form-label" style="margin-bottom: 0;" data-page-node-id="23hxPI0gDyzgoiO7DVcErr">学习材料</label>
-                            <label for="learningFile" class="upload-btn" data-page-node-id="learningUploadBtn">📎 上传PDF/文件</label>
-                            <input type="file" id="learningFile" accept=".pdf,.txt,.md" style="display: none;" onchange="uploadLearningFile(this)" data-page-node-id="learningFileInput">
-                        </div>
-                        <textarea id="learningContent" class="form-textarea" placeholder="直接粘贴你的学习材料，或点右上角「上传PDF/文件」..."></textarea>
-                        <p id="uploadHint" class="hidden" style="color: #2e7d32; font-size: 13px; margin-top: 6px;"></p>
+                    <!-- 已选材料预览条（选完材料后显示在开始页，可点击重开弹窗修改） -->
+                    <div id="learningPreview" class="sentence-preview hidden" onclick="openLearningDialog()">
+                        <span style="font-size: 18px; flex-shrink: 0;">📚</span>
+                        <span class="pv-text" id="learningPreviewText"></span>
+                        <button type="button" class="pv-edit" onclick="event.stopPropagation();openLearningDialog()">修改</button>
                     </div>
                 </div>
 
-                <button id="startBtn" class="btn btn-primary" data-start-btn onclick="startGame()" style="width: 100%; margin-top: 14px; padding: 15px;" data-page-node-id="qahK9RvcaAfpT1qZadGsO1">
-                    开始游戏
+                <!-- 开始按钮：橙白气泡字标（start.png，透明底） -->
+                <button id="startBtn" class="pill-btn pill-btn-start" data-start-btn onclick="startGame()" style="margin-top: 10px;" data-page-node-id="qahK9RvcaAfpT1qZadGsO1">
+                    <img src="start.png" alt="开始" class="start-wordart">
                 </button>
 
                 <div id="startStatus" class="hidden" style="margin-top: 14px; padding: 10px 14px; background: rgba(102, 187, 106, 0.12); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-size: 14px; text-align: center;"></div>
-
-                <button id="resumeBtn" class="btn hidden" onclick="resumeGame()" style="width: 100%; margin-top: 12px; padding: 13px; background: rgba(255,255,255,0.8); border: 1px solid #66bb6a; color: #2e7d32; border-radius: 10px; font-size: 15px; font-weight: 600;">
-                    <span id="resumeLabel">▶️ 继续上局</span>
-                </button>
+                <!-- 继续上局已搬进个人资料 -->
             </div>
         </div>
     </div>
 
-    <!-- 个人资料悬浮入口（开始页右侧空白区，进入游戏自动隐藏） -->
-    <div id="profileFab" onclick="openProfile()" data-page-node-id="profileFab">
-        <div class="fab-icon">👤</div>
-        <div class="fab-level" id="profileFabLevel">Lv.1</div>
-        <div class="fab-text">个人资料</div>
+    <!-- 个人资料：右上角圆形动图入口（进入游戏自动隐藏） -->
+    <div id="profileFab" onclick="openProfile()" title="个人资料" data-page-node-id="profileFab">
+        <img class="fab-video" src="profile_cat.png" alt="个人资料">
     </div>
 
     <!-- 个人资料弹窗 -->
     <div id="profileModal" class="modal" data-page-node-id="profileModal">
-        <div class="modal-content" style="max-width: 580px;">
-            <div class="start-screen">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h1 class="start-title" style="font-size: 24px; margin: 0;">👤 个人资料</h1>
-                    <button class="btn" onclick="closeProfile()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
+        <div class="modal-content profile-modal-content">
+            <div class="profile-sheet">
+                <!-- 标题行 -->
+                <div class="profile-head">
+                    <div class="profile-title"><span class="profile-title-ico" aria-hidden="true"><svg viewBox="0 0 48 48">
+                        <path d="M12.5 16.5h23v33h-23z" fill="none"/>
+                        <ellipse cx="24" cy="30" rx="12" ry="10.5" fill="#fbf3d8" stroke="#2f6b28" stroke-width="2.2"/>
+                        <path d="M13 24h22a11 11 0 0 1-22 0z" fill="#fffdf3" stroke="#2f6b28" stroke-width="2.2" stroke-linejoin="round"/>
+                        <path d="M15.5 24.5a8.5 8.5 0 0 0 17 0z" fill="#d7e8b8"/>
+                        <circle cx="20.5" cy="28.5" r="1.5" fill="#fff"/>
+                        <circle cx="26.5" cy="26.8" r="1.5" fill="#fff"/>
+                        <circle cx="24.5" cy="30.5" r="1.5" fill="#fff"/>
+                        <path d="M20.5 29.4c1 1.4 2.3 2.1 3.6 2.1s2.6-.7 3.6-2.1" fill="none" stroke="#2f6b28" stroke-width="1.7" stroke-linecap="round"/>
+                        <circle cx="17.6" cy="25.6" r="1" fill="#2f6b28"/><circle cx="30.4" cy="25.6" r="1" fill="#2f6b28"/>
+                        <path d="M21.3 19.6c0-1.6 1.2-2.9 2.7-2.9s2.7 1.3 2.7 2.9" fill="none" stroke="#2f6b28" stroke-width="1.9" stroke-linecap="round"/>
+                    </svg></span>个人资料</div>
+                    <button class="pill-btn-ghost" onclick="closeProfile()">✕ 关闭</button>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 16px; padding: 18px; background: rgba(102,187,106,0.12); border: 1px solid #c8dcc8; border-radius: 14px; margin-bottom: 16px;">
-                    <div style="font-size: 38px;">🏆</div>
-                    <div style="flex: 1;">
-                        <div style="font-size: 26px; font-weight: 800; color: #2e7d32;" id="profileLevelBig">Lv.1</div>
-                        <div style="color: #5c6e5c; font-size: 13px; margin-top: 4px;">成功推理 +1 级 · 失败 -1 级（最低 Lv.1）</div>
+                <!-- 等级横幅 -->
+                <div class="profile-banner">
+                    <span class="profile-trophy" aria-hidden="true"><svg viewBox="0 0 48 48">
+                        <path d="M14 10h20v9a10 10 0 0 1-20 0z" fill="#f2b93c" stroke="#8a5a12" stroke-width="1.9" stroke-linejoin="round"/>
+                        <path d="M14 12.5H9.5A4.8 4.8 0 0 0 14.6 18M34 12.5h4.5A4.8 4.8 0 0 1 33.4 18" fill="none" stroke="#8a5a12" stroke-width="1.9" stroke-linecap="round"/>
+                        <path d="M24 28.5V33M18.5 41h11M21 33h6v8h-6z" fill="none" stroke="#8a5a12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M24 12l1.9 3.7 4.1.6-3 2.9.7 4.1-3.7-1.9-3.7 1.9.7-4.1-3-2.9 4.1-.6z" fill="#fff4c9"/>
+                    </svg></span>
+                    <span class="profile-level" id="profileLevelBig">Lv.1</span>
+                    <span class="profile-banner-divider"></span>
+                    <span class="profile-rate" id="profileStats">胜率 0%</span>
+                </div>
+
+                <!-- 未完成的案件（当前自动存档那局） -->
+                <div class="sec-head profile-sec-head"><span class="profile-sec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="#fff8e6" stroke="#2f6b28" stroke-width="1.8" stroke-dasharray="4 3"/><path d="M12 7.2V12l3.2 2.1" fill="none" stroke="#2f6b28" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>未完成的案件</div>
+                <div id="profileUnfinished" class="profile-records" style="margin-bottom: 14px;"></div>
+
+                <!-- 完成的案件 -->
+                <div class="sec-head profile-sec-head"><span class="profile-sec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2.6" fill="#fff8e6" stroke="#2f6b28" stroke-width="1.8"/><rect x="9" y="2.2" width="6" height="3.4" rx="1.2" fill="#f2b93c" stroke="#2f6b28" stroke-width="1.5"/><path d="M8.3 10.2h7.4M8.3 13.4h7.4M8.3 16.6h4.6" stroke="#8bb974" stroke-width="1.7" stroke-linecap="round"/></svg></span>完成的案件</div>
+                <div id="profileRecords" class="profile-records"></div>
+
+                <!-- 知乎账号（黑客松 OAuth 接入；未配置凭证时为演示模式） -->
+                <div class="sec-head profile-sec-head" style="margin-top: 16px;"><svg viewBox="0 0 24 24" width="20" height="20" style="flex-shrink:0;"><path d="M6.4 3.6h11.2a3.9 3.9 0 0 1 3.9 3.9v6a3.9 3.9 0 0 1-3.9 3.9H9.5L7 20.5v-3.1h-.6a3.9 3.9 0 0 1-3.9-3.9v-6a3.9 3.9 0 0 1 3.9-3.9z" fill="none" stroke="#0084ff" stroke-width="1.7" stroke-linejoin="round"/><text x="12" y="13.8" text-anchor="middle" font-size="9" font-weight="800" fill="#0084ff" font-family="Arial, sans-serif">知</text></svg>知乎账号</div>
+                <div class="stat-card p-card">
+                    <div id="zhihuAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: rgba(0,132,255,0.10); border: 1.5px solid #a8d0f5; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #0084ff; flex-shrink: 0; overflow: hidden;">知</div>
+                    <div style="flex: 1; min-width: 0; text-align: left;">
+                        <div id="zhihuName" style="font-size: 16px; font-weight: 800; color: #2e4a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">未登录知乎</div>
+                        <div id="zhihuHint" style="font-size: 12px; color: #7c8b7c; margin-top: 2px;">登录后可在作品页展示账号身份</div>
                     </div>
-                    <div style="text-align: right; color: #2e7d32; font-size: 14px; font-weight: 600; line-height: 1.6;" id="profileStats">胜 0 · 负 0<br>胜率 0%</div>
+                    <button id="zhihuLoginBtn" class="pill-btn-ghost" onclick="zhihuLogin()" style="flex-shrink: 0;">登录</button>
+                    <button id="zhihuLogoutBtn" class="pill-btn-ghost hidden" onclick="zhihuLogout()" style="flex-shrink: 0; color: #5c6e5c;">退出</button>
                 </div>
 
-                <div style="font-weight: 700; color: #2e7d32; margin-bottom: 8px;">📋 完成的案件</div>
-                <div id="profileRecords" style="max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;"></div>
+                <!-- 继续上局 -->
+                <div id="profileResumeSlot" class="hidden" style="margin-top: 18px;">
+                    <div class="sec-head profile-sec-head"><span class="profile-sec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="#fff8e6" stroke="#2f6b28" stroke-width="1.8"/><path d="M10.2 8.8l5.2 3.2-5.2 3.2V8.8z" fill="#f2b93c" stroke="#2f6b28" stroke-width="1.4" stroke-linejoin="round"/></svg></span>继续上局</div>
+                    <div id="profileResumeCard"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学习模式：学习材料弹窗（无学科字段，支持 PDF / txt / Word） -->
+    <div id="learningDialog" class="modal" data-page-node-id="learningDialog">
+        <div class="modal-content learn-dialog-content">
+            <div class="learn-sheet">
+                <!-- 标题行 -->
+                <div class="learn-head">
+                    <div class="learn-title">
+                        <span class="learn-title-ico" aria-hidden="true"><svg viewBox="0 0 48 48">
+                            <path d="M9 13.5c5.4-2.6 10.3-2.6 15 0v24c-4.7-2.6-9.6-2.6-15 0z" fill="#fffdf3" stroke="#2f6b28" stroke-width="2.1" stroke-linejoin="round"/>
+                            <path d="M39 13.5c-5.4-2.6-10.3-2.6-15 0v24c4.7-2.6 9.6-2.6 15 0z" fill="#e6f0cf" stroke="#2f6b28" stroke-width="2.1" stroke-linejoin="round"/>
+                            <path d="M24 13.5v24" stroke="#2f6b28" stroke-width="2.1" stroke-linecap="round"/>
+                            <circle cx="34" cy="21.5" r="4.6" fill="#f2b93c" stroke="#8a5a12" stroke-width="1.7"/>
+                            <path d="M34 19.4l.8 1.6 1.7.3-1.2 1.2.3 1.7-1.6-.9-1.6.9.3-1.7-1.2-1.2 1.7-.3z" fill="#fff4c9"/>
+                        </svg></span>
+                        学习材料
+                    </div>
+                    <button type="button" class="pill-btn-ghost" onclick="closeLearningDialog()">✕ 关闭</button>
+                </div>
+
+                <p class="learn-tip">上传或粘贴本次要学习的材料，AI 会把知识点融进案件里。无需填写学科，内容会自动识别。</p>
+
+                <!-- 上传区（点击选择 / 拖拽） -->
+                <div id="learnDrop" class="learn-drop" onclick="document.getElementById('learningFile').click()">
+                    <div class="learn-drop-ico" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" width="34" height="34">
+                            <path d="M24 31V13" stroke="#2f6b28" stroke-width="2.6" stroke-linecap="round"/>
+                            <path d="M16.5 20.5L24 13l7.5 7.5" fill="none" stroke="#2f6b28" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 32.5v3.2A3.3 3.3 0 0 0 15.3 39h17.4a3.3 3.3 0 0 0 3.3-3.3v-3.2" fill="none" stroke="#2f6b28" stroke-width="2.6" stroke-linecap="round"/>
+                            <circle cx="36" cy="13" r="4.6" fill="#f2b93c" stroke="#8a5a12" stroke-width="1.6"/>
+                        </svg>
+                    </div>
+                    <div class="learn-drop-main">点击选择文件，或拖拽到这里</div>
+                    <div class="learn-drop-sub">支持 PDF · Word（docx / doc）· TXT · Markdown，单文件 ≤ 20MB</div>
+                    <input type="file" id="learningFile" accept=".pdf,.txt,.md,.markdown,.docx,.doc" style="display: none;" onchange="uploadLearningFile(this)" data-page-node-id="learningFileInput">
+                </div>
+
+                <p id="uploadHint" class="hidden learn-hint"></p>
+
+                <!-- 或直接粘贴 -->
+                <div class="learn-or"><span>或直接粘贴文字</span></div>
+                <textarea id="learningContent" class="form-textarea learn-textarea" placeholder="把学习材料粘贴到这里…" oninput="onLearningTextInput()"></textarea>
+
+                <div class="learn-foot">
+                    <span id="learnCharCount" class="learn-count">0 字</span>
+                    <button type="button" class="learn-confirm" onclick="confirmLearningDialog()">
+                        <span class="lcb-label">确定</span>
+                        <span class="lcb-go" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 一句话开局：输入弹窗 -->
+    <div id="sentenceDialog" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="start-screen">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <h1 class="start-title" style="font-size: 22px; margin: 0;">🎭 一句话开局</h1>
+                    <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()" style="font-size: 13px;">✕ 关闭</button>
+                </div>
+                <p style="color: #5c6e5c; font-size: 14px; margin-bottom: 14px; line-height: 1.6;">用一句话描述身份和事件，AI 会据此生成专属汤面。可以只写身份，也可以身份+事件一起写。</p>
+                <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：&#10;我是一个学生&#10;&#10;或：&#10;小明昨晚失踪了。我是他的老师" maxlength="200" rows="4" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span id="sentenceDialogCount" style="color: #7c8b7c; font-size: 12px;">0 / 200</span>
+                    <span style="color: #7c8b7c; font-size: 12px;">回车换行 · Ctrl+Enter 确认</span>
+                </div>
+                <div style="margin-top: 14px; padding: 12px 14px; background: rgba(102,187,106,0.10); border: 1px solid #c8dcc8; border-radius: 10px; font-size: 13px; color: #5c6e5c; line-height: 1.7;">
+                    <div style="font-weight: 700; color: #2e7d32; margin-bottom: 4px;">💡 示例</div>
+                    <div>· 我是一个学生</div>
+                    <div>· 小明昨晚失踪了。我是他的老师</div>
+                    <div>· 我在医院醒来，记不起自己是谁</div>
+                </div>
+                <button type="button" class="pill-btn btn-wordart" onclick="confirmSentence()" style="margin-top: 18px;"><img src="start.png" alt="开始" class="start-wordart"></button>
             </div>
         </div>
     </div>
@@ -732,41 +2025,57 @@
     <!-- 知乎故事改编：故事列表弹窗 -->
     <div id="zhihuStoryModal" class="modal">
         <div class="modal-content" style="max-width: 560px;">
-            <div class="start-screen">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h1 class="start-title" style="font-size: 22px; margin: 0;">📖 知乎故事改编汤面</h1>
-                    <button class="btn" onclick="closeZhihuStories()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
-                </div>
-                <p style="color: #5c6e5c; font-size: 13px; margin-bottom: 14px;">选一个知乎故事（黑客松内容接口），AI 把它改编成可推理的海龟汤案件；原故事仅作素材，开局汤面不会剧透原文。</p>
-                <div id="zhihuStoryList" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;">
+            <div class="start-screen" style="padding: 6px 4px 4px;">
+                <div style="font-family: 'KaiTi','STKaiti','楷体','Kaiti SC',cursive; font-size: 24px; font-weight: 700; color: #1b5e20; text-align: center; letter-spacing: 6px; margin-bottom: 12px;">知乎故事汤面</div>
+                <div id="zhihuStoryList" style="max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;">
                     <p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">加载中...</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 询问他人弹窗：选人物 + 输入问题 -->
+    <!-- 询问他人弹窗：选人物 + 输入问题（仿设计图：奶油卡片 + 彩色角色 chip + 橙色确认） -->
     <div id="askPersonModal" class="modal" data-page-node-id="askPersonModal">
-        <div class="modal-content" style="max-width: 520px;">
-            <div class="start-screen">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h1 class="start-title" style="font-size: 22px; margin: 0;">🗣 询问他人</h1>
-                    <button class="btn" onclick="closeAskPerson()" style="padding: 8px 16px; background: rgba(255,255,255,0.85); border: 1px solid #c8dcc8; border-radius: 10px; color: #2e7d32; font-weight: 600;">✕ 关闭</button>
-                </div>
-                <p style="color: #5c6e5c; font-size: 13px; margin-bottom: 14px;">选一个你想打听的人，再写下问题，对方会以第一人称告诉你一条线索。<b style="color:#c62828;">消耗 1 次推理机会</b></p>
-
-                <div class="form-group">
-                    <label class="form-label">👤 想询问谁？</label>
-                    <div id="askPersonChips" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                    <input type="text" id="askPersonCustom" class="form-input" style="margin-top: 10px;" placeholder="或自己输入人物称呼，如：物业前台" maxlength="20">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">💬 想问什么？</label>
-                    <textarea id="askPersonQuestion" class="form-textarea" style="min-height: 80px;" placeholder="例如：最后一次见到小明是什么时候？他当时状态怎么样？" maxlength="200"></textarea>
+        <div class="modal-content ask-person-content">
+            <div class="ask-person-sheet">
+                <!-- 标题行 -->
+                <div class="ask-person-head">
+                    <div class="ask-person-title"><span class="ap-title-ico" aria-hidden="true"><svg viewBox="0 0 48 48">
+                        <path d="M6 12.5h30a4.4 4.4 0 0 1 4.4 4.4v15.4a4.4 4.4 0 0 1-4.4 4.4H21.6l-4.9 4.2v-4.2H6a4.4 4.4 0 0 1-4.4-4.4V16.9A4.4 4.4 0 0 1 6 12.5z" fill="#4b8f3d" stroke="#23541b" stroke-width="1.9" stroke-linejoin="round"/>
+                        <circle cx="12" cy="24.2" r="2.4" fill="#fbfdf3"/>
+                        <circle cx="19.5" cy="24.2" r="2.4" fill="#fbfdf3"/>
+                        <circle cx="27" cy="24.2" r="2.4" fill="#fbfdf3"/>
+                        <path d="M38.6 8.2c1.5-.5 3 .7 3 2.3" stroke="#8fd0f2" stroke-width="1.9" stroke-linecap="round" fill="none"/>
+                    </svg></span>询问他人</div>
+                    <button class="pill-btn-ghost ap-close" onclick="closeAskPerson()">✕ 关闭</button>
                 </div>
 
-                <button class="btn btn-primary" onclick="submitAskPerson()" style="width: 100%; padding: 14px;">🗣 去询问</button>
+                <p class="ask-person-sub">选一个你想打听的人，再写下问题，对方会以第一人称告诉你一条线索。消耗 1 次推理机会</p>
+
+                <!-- 角色选择 -->
+                <div class="ap-chip-label"><span class="ap-chip-ico" aria-hidden="true"><svg viewBox="0 0 32 32">
+                    <circle cx="16" cy="10.5" r="5.4" fill="#f2b93c" stroke="#23541b" stroke-width="1.7"/>
+                    <path d="M6.5 27c1.3-6 5-9 9.5-9s8.2 3 9.5 9" fill="#4b8f3d" stroke="#23541b" stroke-width="1.7" stroke-linejoin="round"/>
+                </svg></span>角色选择?</div>
+                <div id="askPersonChips" class="ap-chips"></div>
+                <input type="text" id="askPersonCustom" class="ap-input" placeholder="或自己输入人物称呼，如：物业前台" maxlength="20">
+
+                <!-- 想问什么 -->
+                <div class="ap-chip-label" style="margin-top: 20px;"><span class="ap-chip-ico" aria-hidden="true"><svg viewBox="0 0 32 32">
+                    <circle cx="14" cy="12" r="4.6" fill="#a9dd8b" stroke="#23541b" stroke-width="1.7"/>
+                    <path d="M6 25c1-5 4.1-7.6 8-7.6s7 2.6 8 7.6" fill="#7fc35c" stroke="#23541b" stroke-width="1.7" stroke-linejoin="round"/>
+                    <path d="M23.5 9.5c1.2-.4 2.4.5 2.4 1.8" stroke="#8fd0f2" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                </svg></span>想问什么?
+                    <span class="ap-bubble" aria-hidden="true"><svg viewBox="0 0 40 30">
+                        <path d="M5 3.5h24a3.4 3.4 0 0 1 3.4 3.4v9.2a3.4 3.4 0 0 1-3.4 3.4H15.6l-4.4 3.6v-3.6H5A3.4 3.4 0 0 1 1.6 16.1V6.9A3.4 3.4 0 0 1 5 3.5z" fill="#fbfdf3" stroke="#23541b" stroke-width="1.7" stroke-linejoin="round"/>
+                        <circle cx="12" cy="11.5" r="1.75" fill="#4b8f3d"/>
+                        <circle cx="19" cy="11.5" r="1.75" fill="#4b8f3d"/>
+                        <circle cx="26" cy="11.5" r="1.75" fill="#4b8f3d"/>
+                    </svg></span>
+                </div>
+                <textarea id="askPersonQuestion" class="ap-textarea" placeholder="例如：最后一次见到小明是什么时候？他当时状态怎么样？" maxlength="200"></textarea>
+
+                <button class="ap-confirm" onclick="submitAskPerson()">确认</button>
             </div>
         </div>
     </div>
@@ -775,7 +2084,15 @@
     <div id="gameScreen" class="hidden" data-page-node-id="et3iBvRYYAHWN9amK07C9r">
         <!-- 顶部状态栏 -->
         <div class="top-bar" data-page-node-id="9oHGsUmLc1dK48RnpmbHEP">
-            <div class="case-title" id="caseTitle" data-page-node-id="mhp9OQ7PENvRmMRqDSepIG">载入中...</div>
+            <div class="top-bar-left">
+                <button type="button" class="back-btn" id="backHomeBtn" onclick="backToHome()" title="返回首页">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="#2f6b28" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    返回
+                </button>
+                <div class="case-title" id="caseTitle" data-page-node-id="mhp9OQ7PENvRmMRqDSepIG"><img src="cat.webp" alt="" class="topbar-mascot"><span id="caseTitleText">载入中...</span></div>
+            </div>
             <div class="status-indicators" data-page-node-id="hoKKLSVvxZs0HGNpZZYING">
                 <div class="status-item" data-page-node-id="RFj8jUvFaSGQ7OA10ZWccA">
                     <span data-page-node-id="DuNC3sg9QmSNGzHmjAdy0S">🎯 剩余推理</span>
@@ -824,59 +2141,114 @@
                         <input type="text" id="actionInput" class="action-input" placeholder="输入你的问题或猜想..." data-page-node-id="UZOvWQMDe5MFVkSFUD8Suy" />
                     </div>
                     <div class="action-buttons" data-page-node-id="N3RD7iNALvFvtQ209G540W">
-                        <button class="btn btn-primary" data-action-btn onclick="askQuestion()" data-page-node-id="rj3hYdE9hWRQUEPldMqe04">💬 提问</button>
-                        <button class="btn btn-secondary" data-action-btn onclick="makeHypothesis()" data-page-node-id="kYNGbOPYRO01HE5QNEAjY4">🤔 提出猜想</button>
-                        <button class="btn btn-danger" data-action-btn onclick="verifyTruth()" data-page-node-id="lhXTgtrE3ZajRu8VY8GRqM">✅ 还原真相</button>
-                        <button class="btn btn-secondary" data-action-btn onclick="askSomeone()" data-page-node-id="lpJGqO0NB4tM8xCzQhY7DB">🗣 询问他人</button>
-                        <button id="learningBtn" class="btn btn-warning hidden" data-action-btn onclick="startLearningChallenge()" data-page-node-id="hZoo4UD5Jad5sACX8XNV4z">📚 学习挑战</button>
-                        <button id="restartBtn" class="btn btn-primary hidden" onclick="location.reload()" data-page-node-id="J9Phs5lXVf8PqeFA6DB8yU">🔄 再来一局</button>
+                        <button class="btn btn-primary" data-action-btn onclick="askQuestion()" data-page-node-id="rj3hYdE9hWRQUEPldMqe04"><span class="z-ico ico-ask" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <!-- 小乌龟侦探：绿色小龟 + 侦探帽 -->
+    <ellipse cx="19" cy="38.2" rx="12.5" ry="2.4" fill="#2b5c22" opacity=".16"/>
+    <path d="M30.6 33.5c.4 2.1 1.3 3.4 3.1 3.9l2.4-1.5c-1.6-.5-2.2-1.6-2.2-3.2z" fill="#8fc46a" stroke="#23541b" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M11.4 33.1c-.3 2.2-1.1 3.5-2.9 3.9l-2.2-1.4c1.5-.6 2.1-1.7 2.1-3.3z" fill="#8fc46a" stroke="#23541b" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="11.3" cy="29.1" r="2.4" fill="#8fc46a" stroke="#23541b" stroke-width="1.4"/>
+    <ellipse cx="21" cy="30.4" rx="13" ry="6.1" fill="#6ba84d" stroke="#23541b" stroke-width="1.8"/>
+    <path d="M13.6 31.6h14.4" stroke="#dcefc4" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>
+    <path d="M35.6 27.4c3 0 5.6 2.1 5.6 4.7 0 2.5-2.5 4.6-5.6 4.6-3.2 0-5.7-2.1-5.7-4.6 0-2.6 2.5-4.7 5.7-4.7z" fill="#8fc46a" stroke="#23541b" stroke-width="1.7"/>
+    <circle cx="37.6" cy="30.6" r="1.05" fill="#23541b"/><circle cx="38" cy="30.1" r=".38" fill="#ffffff"/>
+    <path d="M34.4 37.9c.7 1.6.2 2.9-1.2 3.4M40.6 37.9c-.7 1.6-.2 2.9 1.2 3.4" stroke="#23541b" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <!-- 问号气泡 -->
+    <path d="M29.4 8.2h9.6a3.6 3.6 0 0 1 3.6 3.6v4.9a3.6 3.6 0 0 1-3.6 3.6h-2.1l-3 2.6v-2.6h-4.5a3.6 3.6 0 0 1-3.6-3.6v-4.9a3.6 3.6 0 0 1 3.6-3.6z" fill="#fbfdf3" stroke="#23541b" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M33.3 11.9c.9-.9 2.4-.9 3.2 0 .8.9.7 2.2-.2 3l-1.5 1.3v.8" fill="none" stroke="#2f7d2f" stroke-width="1.9" stroke-linecap="round"/>
+    <circle cx="34.8" cy="18.6" r="1.15" fill="#2f7d2f"/>
+</svg></span>提问</button>
+                        <button class="btn btn-secondary" data-action-btn onclick="makeHypothesis()" data-page-node-id="kYNGbOPYRO01HE5QNEAjY4"><span class="z-ico ico-hypothesis" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <!-- 线索卡 x3 + 灯泡 -->
+    <rect x="5.5" y="16.5" width="15" height="20" rx="3.4" transform="rotate(-11 13 26.5)" fill="#3f7d33" stroke="#23541b" stroke-width="1.7"/>
+    <rect x="9.5" y="13.5" width="15" height="20" rx="3.4" transform="rotate(-4 17 23.5)" fill="#4e9440" stroke="#23541b" stroke-width="1.7"/>
+    <rect x="13" y="12" width="18" height="22" rx="3.8" fill="#5da84b" stroke="#23541b" stroke-width="1.9"/>
+    <circle cx="18.4" cy="18.4" r="1.7" fill="#e8452c" stroke="#23541b" stroke-width="1.1"/>
+    <path d="M17.6 25h9.4M17.6 29h6.4" stroke="#d9edc0" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
+    <circle cx="23" cy="22.4" r="1.7" fill="#e8452c" stroke="#23541b" stroke-width="1.1"/>
+    <path d="M31.6 21.5l1.6-3.1 1.6 3.1 3.1 1.6-3.1 1.6-1.6 3.1-1.6-3.1-3.1-1.6z" fill="#ffd45e" stroke="#23541b" stroke-width="1.1" stroke-linejoin="round"/>
+    <!-- 灯泡 -->
+    <circle cx="37" cy="24.5" r="6.6" fill="#ffe07a" stroke="#23541b" stroke-width="1.9"/>
+    <circle cx="37" cy="24.5" r="3.3" fill="#fff3bb"/>
+    <path d="M34.6 30.4h4.8M35.1 32.6h3.8" stroke="#23541b" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M34.3 33.9l1.9 2.3h1.6l1.9-2.3z" fill="#8f97a3" stroke="#23541b" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M37 24.5v-3.6M37 24.5l2.6 1.6M37 24.5l-2.6 1.6" stroke="#c99a1e" stroke-width="1.3" stroke-linecap="round"/>
+</svg></span>提出猜想</button>
+                        <button class="btn btn-danger" data-action-btn onclick="verifyTruth()" data-page-node-id="lhXTgtrE3ZajRu8VY8GRqM"><span class="z-ico ico-truth" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <!-- 放大镜 + 拼图块 -->
+    <rect x="21.5" y="25.5" width="16" height="16" rx="3.6" fill="#a9dd8b" stroke="#23541b" stroke-width="1.9"/>
+    <path d="M27.5 25.5v-2.6a2.1 2.1 0 0 1 4.2 0v2.6M37.5 29.9h2.4a2.1 2.1 0 0 1 0 4.2h-2.4" fill="none" stroke="#23541b" stroke-width="1.7"/>
+    <path d="M38.6 20.3l1.5-2.9 1.5 2.9 2.9 1.5-2.9 1.5-1.5 2.9-1.5-2.9-2.9-1.5z" fill="#ffe98f" stroke="#23541b" stroke-width="1.1" stroke-linejoin="round"/>
+    <!-- 放大镜镜片 -->
+    <circle cx="19" cy="17.5" r="10.4" fill="#cfe8fa" stroke="#4e9440" stroke-width="3.9"/>
+    <circle cx="19" cy="17.5" r="10.4" fill="none" stroke="#23541b" stroke-width="1.7" opacity=".35"/>
+    <path d="M13.6 13.2a7.4 7.4 0 0 1 4-3.3" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity=".95" fill="none"/>
+    <path d="M15.8 15.4a5.4 5.4 0 0 1 2.4-2.2" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" opacity=".7" fill="none"/>
+    <!-- 镜柄 -->
+    <rect x="24.6" y="25.1" width="5.4" height="9.6" rx="2.7" transform="rotate(-45 27.3 29.9)" fill="#f7a53c" stroke="#23541b" stroke-width="1.8"/>
+</svg></span>还原真相</button>
+                        <button class="btn btn-secondary" data-action-btn onclick="askSomeone()" data-page-node-id="lpJGqO0NB4tM8xCzQhY7DB"><span class="z-ico ico-ask-person" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <!-- 对话气泡（双向人物） -->
+    <path d="M9 11.5h30a4.4 4.4 0 0 1 4.4 4.4v15.6a4.4 4.4 0 0 1-4.4 4.4H20.6l-4.9 4.2v-4.2H9a4.4 4.4 0 0 1-4.4-4.4V15.9A4.4 4.4 0 0 1 9 11.5z" fill="#4b8f3d" stroke="#23541b" stroke-width="1.9" stroke-linejoin="round"/>
+    <path d="M13.6 14.2a2.6 2.6 0 0 1 3.4-1.6" stroke="#8fd0f2" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <circle cx="11.4" cy="18.4" r="1" fill="#8fd0f2"/>
+    <circle cx="24.5" cy="15.6" r="1.6" fill="#f7a53c" stroke="#23541b" stroke-width="1"/>
+    <!-- 左人 -->
+    <path d="M18.6 20.2c-2.5 0-4.2 1.9-4.2 4.3v4.6h8.4v-4.6c0-2.4-1.7-4.3-4.2-4.3z" fill="#2f6b28"/>
+    <circle cx="18.6" cy="18.1" r="3.5" fill="#ffd9bd" stroke="#23541b" stroke-width="1.4"/>
+    <path d="M15.3 17.4c0-2.2 1.5-3.6 3.3-3.6 1.9 0 3.3 1.4 3.3 3.6" fill="#2f6b28" stroke="#23541b" stroke-width="1.3" stroke-linejoin="round"/>
+    <!-- 右人 -->
+    <path d="M31.4 20.2c-2.5 0-4.2 1.9-4.2 4.3v4.6h8.4v-4.6c0-2.4-1.7-4.3-4.2-4.3z" fill="#f28a2e" stroke="#23541b" stroke-width="1.4"/>
+    <circle cx="31.4" cy="18.1" r="3.5" fill="#ffd9bd" stroke="#23541b" stroke-width="1.4"/>
+    <path d="M27.9 17.6c-.2-2.3 1.4-3.9 3.5-3.9 2 0 3.6 1.5 3.4 4-.2-.9-.8-1.4-1.6-1.3-.9.1-1.3-.5-1.7-1-.5.6-1.2 1-2.1 1-.7 0-1.2.4-1.5 1.2z" fill="#2f6b28" stroke="#23541b" stroke-width="1.2" stroke-linejoin="round"/>
+</svg></span>询问他人</button>
+                        <button id="learningBtn" class="btn btn-warning hidden" data-action-btn onclick="startLearningChallenge()" data-page-node-id="hZoo4UD5Jad5sACX8XNV4z"><span class="z-ico ico-learn" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <!-- 书本 + 汤勺 + 星星 -->
+    <path d="M24 13.2c-3.6-2.7-8.6-3.2-12.4-1.2v22c3.8-2 8.8-1.5 12.4 1.2z" fill="#f4fbec" stroke="#23541b" stroke-width="1.9" stroke-linejoin="round"/>
+    <path d="M24 13.2c3.6-2.7 8.6-3.2 12.4-1.2v22c-3.8-2-8.8-1.5-12.4 1.2z" fill="#ffffff" stroke="#23541b" stroke-width="1.9" stroke-linejoin="round"/>
+    <path d="M24 13.2v22" stroke="#23541b" stroke-width="1.7"/>
+    <path d="M5.6 10.6v24.2c4.6-1.8 10.8-1.1 15.2 1.4" fill="none" stroke="#7fc35c" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M42.4 10.6v24.2" fill="none" stroke="#a8d8f5" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- 汤勺 -->
+    <ellipse cx="18.6" cy="26.4" rx="4.6" ry="3.4" transform="rotate(-18 18.6 26.4)" fill="#8fc46a" stroke="#23541b" stroke-width="1.6"/>
+    <ellipse cx="18.6" cy="26.4" rx="2.5" ry="1.7" transform="rotate(-18 18.6 26.4)" fill="#3f7d33"/>
+    <path d="M22.2 23.8l6.6-6.4" stroke="#8fc46a" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M22.2 23.8l6.6-6.4" stroke="#23541b" stroke-width="1.2" stroke-linecap="round" opacity=".35"/>
+    <circle cx="29.6" cy="16.7" r="1.9" fill="#f7a53c" stroke="#23541b" stroke-width="1.3"/>
+    <!-- 星星 -->
+    <path d="M33.6 25.6l1.7 3.3 3.6.5-2.6 2.5.7 3.6-3.4-1.8-3.4 1.8.7-3.6-2.6-2.5 3.6-.5z" fill="#ffd45e" stroke="#f28a2e" stroke-width="1.5" stroke-linejoin="round"/>
+</svg></span>学习挑战</button>
+                        <button id="restartBtn" class="btn btn-primary hidden" onclick="restartToHome()" data-page-node-id="J9Phs5lXVf8PqeFA6DB8yU"><span class="z-ico ico-restart" aria-hidden="true"><svg viewBox="0 0 48 48">
+    <path d="M37.6 24a13.6 13.6 0 1 1-4.6-10.2" fill="none" stroke="#4b8f3d" stroke-width="4" stroke-linecap="round"/>
+    <path d="M36.9 7.6l1 7.2-7.2 1" fill="none" stroke="#23541b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="24" cy="24" r="5.6" fill="#cfe8fa" stroke="#23541b" stroke-width="1.8"/>
+    <path d="M24 20.6v3.6l2.6 1.6" stroke="#2f7d2f" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+</svg></span>再来一局</button>
                     </div>
                 </div>
             </div>
 
+            <!-- 可拖动分隔条：拖动调整左右宽度，双击恢复默认 -->
+            <div class="panel-resizer" id="panelResizer" title="拖动调整两侧宽度 · 双击恢复默认"></div>
+
             <!-- 右侧推理面板 -->
             <div class="reasoning-panel" data-page-node-id="7mtca1UOPQkYvd4nqTq3Lh">
+                <!-- ❓ 待解谜团：置顶显示（优先级最高） -->
+                <div class="panel-section mysteries-panel" data-page-node-id="oyaZjiqMhI6DgGdZ9M9YUO">
+                    <div class="panel-section-title" data-page-node-id="IEGiGIldyVwKWJLDNxSbsv">❓ 待解谜团</div>
+                    <div id="mysteriesList" data-page-node-id="Qem807tqD8A7feYtpPck9l">
+                        <p style="color: #777; font-size: 13px;" data-page-node-id="fEfNyNYJqymvjAB5iywx6A">-</p>
+                    </div>
+                </div>
+
                 <div class="panel-section" data-page-node-id="cluesPanelSection">
                     <div class="panel-section-title" data-page-node-id="cluesPanelTitle">💡 已知线索</div>
                     <div id="cluesList">-</div>
-                </div>
-
-                <div class="panel-section hidden" id="identityActionsSection">
-                    <div class="panel-section-title">🎭 身份行动 <span style="font-size:11px; color:#7c8b7c; font-weight:400;">仅你的身份可执行 · 消耗1次推理机会</span></div>
-                    <div id="actionsList"></div>
-                </div>
-
-                <div class="panel-section" data-page-node-id="GIary7EKQdumMmeXGXVHBU">
-                    <div class="panel-section-title" data-page-node-id="5ZDYawkTpEeS7GRI5KV4Do">🧠 推理能力</div>
-                    <div class="ability-item" data-page-node-id="udjaOTUtivVefQ3pjNtihR">
-                        <span class="ability-name" data-page-node-id="iFMBHdoK6Mjm5WXLSRwWf3">观察力</span>
-                        <span class="ability-value" id="abilityObservation" data-page-node-id="X0oQxVGT8Gwp7ACvTSZCAw">Lv.1</span>
-                    </div>
-                    <div class="ability-item" data-page-node-id="vnMjYd2IboAMpbvGoyGgTL">
-                        <span class="ability-name" data-page-node-id="iQtSxOQzhsQOs32bEA2BHp">逻辑力</span>
-                        <span class="ability-value" id="abilityLogic" data-page-node-id="RbK0n0dT4sL8qK4He4YoEd">Lv.1</span>
-                    </div>
-                    <div class="ability-item" data-page-node-id="j73M0sPiQcptlCrYXbI3Ym">
-                        <span class="ability-name" data-page-node-id="VUNViLv3npyHaJxIGttpiL">联想力</span>
-                        <span class="ability-value" id="abilityAssociation" data-page-node-id="xeNiXzVumQImTGFC8WAta5">Lv.1</span>
-                    </div>
-                    <div class="ability-item" data-page-node-id="jYimnIrUPYGnQzp8Lnv1EE">
-                        <span class="ability-name" data-page-node-id="Bx5z9RbB0OXfm24Ugy2zIq">知识力</span>
-                        <span class="ability-value" id="abilityKnowledge" data-page-node-id="oVS9FqHECjxMEJF3eI9EEJ">Lv.1</span>
-                    </div>
                 </div>
 
                 <div class="panel-section" data-page-node-id="k98xfPuZJka4Om1LlY6L2T">
                     <div class="panel-section-title" data-page-node-id="tEdiprhQMQEIahrUQBGi0o">✨ 当前增益</div>
                     <div id="bonusesList" data-page-node-id="vpzX46MaGmqiKWAifFVAVb">
                         <p style="color: #777; font-size: 13px;" data-page-node-id="CoI1yMrVtIiFSOTmXyEiNq">暂无增益</p>
-                    </div>
-                </div>
-
-                <div class="panel-section" data-page-node-id="oyaZjiqMhI6DgGdZ9M9YUO">
-                    <div class="panel-section-title" data-page-node-id="IEGiGIldyVwKWJLDNxSbsv">❓ 待解谜团</div>
-                    <div id="mysteriesList" data-page-node-id="Qem807tqD8A7feYtpPck9l">
-                        <p style="color: #777; font-size: 13px;" data-page-node-id="fEfNyNYJqymvjAB5iywx6A">-</p>
                     </div>
                 </div>
             </div>
@@ -887,7 +2259,6 @@
     <div id="exerciseModal" class="modal" data-page-node-id="fVzbiOtcRU9PNeVgQe1VBn">
         <div class="modal-content" data-page-node-id="CPU9uwG4jeF41LZ3uZ0mar">
             <div class="modal-title" data-page-node-id="ZDxyeneBZkwEp3yNMq0Zb5">📚 学习挑战</div>
-            <div id="exerciseIntro" style="color:#b0b0b0; margin-bottom:15px; white-space:pre-wrap;" data-page-node-id="cHYNKCd0oKZYozovverYzI"></div>
             <div class="form-group" data-page-node-id="rZqmKFNUlJsAPq7ayY2OEa">
                 <label class="form-label" id="exerciseQuestion" style="line-height:1.6;" data-page-node-id="nKoWdvhqMwz0dI4AufNDlB"></label>
                 <div id="exerciseOptions" style="margin-top:12px;" data-page-node-id="ygFvkEKJyvEdUEGTloTBRi"></div>
@@ -898,13 +2269,44 @@
     </div>
 
     <script>
-        // API基址：后端托管/公网HTTPS访问时同源；本地8080静态开发时回退 localhost:8000
-        const API_BASE = (location.protocol === 'https:' || location.port === '8000')
-            ? location.origin : 'http://localhost:8000';
+        // API 基址解析：
+        // 1) 后端托管（同源）或 https 部署 → 用 location.origin
+        // 2) 本地用静态服务器（如 8080）打开 → 回退到 http://localhost:8000
+        // 另外提供 apiFetch()：网络失败时自动在「同源」与「localhost:8000」之间重试一次，
+        // 避免因打开方式不同（8080 / file:// / 8000）导致 Failed to fetch。
+        const API_CANDIDATES = (() => {
+            const list = [];
+            const push = (u) => { if (u && !list.includes(u)) list.push(u); };
+            const isHttp = location.protocol === 'http:' || location.protocol === 'https:';
+            if (isHttp && location.port === '8000') {
+                push(location.origin);            // 已由后端托管
+            } else {
+                push('http://localhost:8000');    // 8080 / file:// 等本地开发
+                if (isHttp) push(location.origin); // 公网/反代同源兜底
+            }
+            return list;
+        })();
+        const API_BASE = API_CANDIDATES[0];
+
+        // 带自动回退的 fetch：PUT/POST/GET 均可用（FormData 会自动跳过 content-type 设置）
+        async function apiFetch(path, options) {
+            let lastErr = null;
+            for (const base of API_CANDIDATES) {
+                try {
+                    const resp = await fetch(`${base}${path}`, options);
+                    return resp;
+                } catch (e) {
+                    lastErr = e; // 网络层失败（Failed to fetch）→ 试下一个候选
+                }
+            }
+            throw lastErr || new Error('无法连接后端');
+        }
+
         let currentGameId = null;
         let currentMode = 'entertainment';
         let currentExercise = null;
         let busy = false; // 防止LLM响应期间重复点击导致重复消耗推理机会
+        let learningMaterialText = ''; // 学习模式的材料正文（弹窗里填，确认后暂存于此）
 
         // 统一设置按钮忙碌状态
         function setBusy(isBusy) {
@@ -922,10 +2324,28 @@
 
         // 监听模式选择
         document.getElementById('modeSelect').addEventListener('change', (e) => {
-            const learningOptions = document.getElementById('learningOptions');            if (e.target.value === 'learning') {
+            const learningOptions = document.getElementById('learningOptions');
+            if (e.target.value === 'learning') {
                 learningOptions.classList.remove('hidden');
             } else {
                 learningOptions.classList.add('hidden');
+            }
+        });
+        // 模式 pill toggle 点击
+        document.getElementById('modePills').addEventListener('click', (e) => {
+            const pill = e.target.closest('.mode-pill');
+            if (!pill) return;
+            const mode = pill.dataset.mode;
+            const wasLearning = document.getElementById('modeSelect').value === 'learning';
+            const select = document.getElementById('modeSelect');
+            select.value = mode;
+            // 同步视觉
+            document.querySelectorAll('#modePills .mode-pill').forEach(p => p.classList.toggle('active', p === pill));
+            // 联动 learningOptions 显隐（手动触发 change）
+            select.dispatchEvent(new Event('change'));
+            // 切到学习模式时直接弹出材料弹窗（无学科字段，只填材料）
+            if (mode === 'learning' && !wasLearning) {
+                openLearningDialog();
             }
         });
 
@@ -985,7 +2405,8 @@
             const DOTS = '<span class="typing-dots"><i></i><i></i><i></i></span>';
             let text = '';
             const render = () => {
-                bubble.textContent = text;
+                // 流式期间也压平空行，避免打字过程中先撑出一大段空白再回缩
+                bubble.textContent = collapseBlankLines(text);
                 historyDiv.scrollTop = historyDiv.scrollHeight;
             };
             return {
@@ -1037,14 +2458,23 @@
         let zhihuPending = null;          // 已选故事 {premise, attribution, title}
 
         function switchStartMode(m) {
+            // 已改版：开局方式 pill 直接调用 openZhihuStories / openSentenceDialog，本函数仅保留 startMode 同步。
+            // 旧 tabSentence/tabStory/sentencePanel/storyPanel 已移除，相关 DOM 查询安全跳过。
             startMode = m;
-            const activeStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #66bb6a; background: #e8f5e9; color: #2e7d32;';
-            const idleStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #d5e0d5; background: rgba(255,255,255,0.8); color: #7c8b7c;';
-            document.getElementById('tabSentence').style.cssText = (m === 'sentence') ? activeStyle : idleStyle;
-            document.getElementById('tabStory').style.cssText = (m === 'story') ? activeStyle : idleStyle;
-            document.getElementById('sentencePanel').classList.toggle('hidden', m !== 'sentence');
-            document.getElementById('storyPanel').classList.toggle('hidden', m !== 'story');
-            // 两种开局方式均支持娱乐/学习模式，不做锁定
+            try {
+                const tS = document.getElementById('tabSentence');
+                const tR = document.getElementById('tabStory');
+                if (tS && tR) {
+                    const activeStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #66bb6a; background: #e8f5e9; color: #2e7d32;';
+                    const idleStyle = 'flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 2px solid #d5e0d5; background: rgba(255,255,255,0.8); color: #7c8b7c;';
+                    tS.style.cssText = (m === 'sentence') ? activeStyle : idleStyle;
+                    tR.style.cssText = (m === 'story') ? activeStyle : idleStyle;
+                }
+                const sp = document.getElementById('sentencePanel');
+                const rp = document.getElementById('storyPanel');
+                if (sp) sp.classList.toggle('hidden', m !== 'sentence');
+                if (rp) rp.classList.toggle('hidden', m !== 'story');
+            } catch (e) { /* 旧 DOM 已清理，静默忽略 */ }
         }
 
         // 开始游戏（流式：实时显示生成进度；失败自动回退老接口）
@@ -1077,11 +2507,11 @@
             const payload = { premise: sentence, mode: mode };
 
             if (mode === 'learning') {
-                payload.subject = document.getElementById('subjectInput').value.trim();
-                payload.learning_content = document.getElementById('learningContent').value.trim();
+                // 学科字段已移除，只保留学习材料（弹窗里上传/粘贴）
+                payload.learning_content = (learningMaterialText || '').trim();
 
                 if (!payload.learning_content) {
-                    showNotification('学习模式需要提供学习材料', 'error');
+                    showNotification('学习模式需要提供学习材料，请点「学习材料」上传或粘贴', 'error');
                     return;
                 }
             }
@@ -1095,7 +2525,7 @@
                 statusEl.classList.remove('hidden');
                 statusEl.textContent = '⏳ 正在连接后端...';
 
-                const response = await fetch(`${API_BASE}/api/game/start/stream`, {
+                const response = await apiFetch(`/api/game/start/stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1121,9 +2551,8 @@
 
                 currentGameId = finalResult.game_id;
 
-                // 隐藏启动界面，显示游戏界面
-                document.getElementById('startModal').classList.remove('active');
-                document.getElementById('gameScreen').classList.remove('hidden');
+                // 隐藏启动界面，显示游戏界面（并记住「当前在游戏页」）
+                showGameScreen();
 
                 // 显示案件信息
                 displayCaseInfo(finalResult);
@@ -1150,7 +2579,7 @@
         // 老版非流式开局（兜底）
         async function legacyStartGame(payload) {
             try {
-                const response = await fetch(`${API_BASE}/api/game/start`, {
+                const response = await apiFetch(`/api/game/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1159,8 +2588,7 @@
 
                 if (result && result.success) {
                     currentGameId = result.data.game_id;
-                    document.getElementById('startModal').classList.remove('active');
-                    document.getElementById('gameScreen').classList.remove('hidden');
+                    showGameScreen();
                     displayCaseInfo(result.data);
                     document.getElementById('quickSentence').value = '';
                     if (payload.mode === 'learning') {
@@ -1184,41 +2612,86 @@
             // 缓存本案件可询问的人物（询问他人弹窗用）
             window._askablePeople = case_info.askable_people || [];
 
-            document.getElementById('caseTitle').textContent = case_info.title;
+            document.getElementById('caseTitleText').textContent = case_info.title;
             document.getElementById('caseBackground').textContent = case_info.background;
             document.getElementById('sceneDescription').textContent = case_info.scene_description;
 
+            updateGameState(gameState);
             updateClues(case_info.revealed_clues);
             updateMysteries(case_info.mysteries);
-            updateGameState(gameState);
         }
+
+        // 精简线索来源标注：委托类套话统一显示为「委托信息」，其余原样（超长由CSS省略）
+        function normalizePerspective(t) {
+            const s = String(t || '').trim();
+            if (!s) return '';
+            if (/委托|受雇侦探|向我陈述|具体要求/.test(s)) return '委托信息';
+            return s;
+        }
+
+        // 侦探身份行动并入已知线索列表（待执行行动显示为「侦探身份线索」）
+        function renderIdentityActionsBlock() {
+            const acts = window._identityActions || [];
+            if (!acts.length) return '';
+            return `
+                <div class="clue-identity-title">🎭 侦探身份线索 <span class="clue-identity-note">仅你的身份可执行 · 点击执行</span></div>
+                ${acts.map(a => `
+                    <button class="action-card" data-action-btn ${a.used ? 'disabled' : ''} onclick="doIdentityAction('${a.id}')">
+                        <div style="font-weight: 600;">🎭 ${a.name}${a.used ? ' <span style="color:#9caf9c; font-size:12px; font-weight:400;">（已使用）</span>' : ''}</div>
+                        <div style="font-size: 12px; color: #5c6e5c; margin-top: 2px; line-height: 1.5;">${a.desc}</div>
+                    </button>
+                `).join('')}
+            `;
+        }
+
+        // 线索卡片图标（线索卡 + 红色疑点 + 放大镜）：用于已知线索列表
+        const CLUE_ICON_SVG = `<svg viewBox="0 0 48 48">
+    <rect x="6.5" y="9" width="22" height="27" rx="4" fill="#eaf6dd" stroke="#23541b" stroke-width="1.9"/>
+    <circle cx="12.4" cy="15.4" r="3" fill="#e8452c" stroke="#23541b" stroke-width="1.4"/>
+    <circle cx="12.4" cy="15.4" r="1.1" fill="#ffe9e4"/>
+    <path d="M18 15.4h7.6M11 21.8h14.6M11 25.6h14.6M11 29.4h10" stroke="#7fc35c" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M22.5 34.5l8.5-8.5 12.5 12.5-8.5 8.5z" fill="none"/>
+    <circle cx="32.5" cy="29.5" r="8.4" fill="#cfe8fa" stroke="#f7a53c" stroke-width="3.6"/>
+    <circle cx="32.5" cy="29.5" r="8.4" fill="none" stroke="#23541b" stroke-width="1.5" opacity=".3"/>
+    <path d="M28.6 26.2a5.6 5.6 0 0 1 3.2-2.6" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" fill="none" opacity=".95"/>
+    <rect x="36.2" y="35.4" width="4.6" height="8.4" rx="2.3" transform="rotate(-45 38.5 39.6)" fill="#b5631f" stroke="#23541b" stroke-width="1.6"/>
+</svg>`;
+
 
         // 更新线索
         function updateClues(clues) {
             const cluesList = document.getElementById('cluesList');
-            if (clues.length === 0) {
+
+            const clueHtml = (clues || []).map(clue => {
+                const src = normalizePerspective(clue.perspective);
+                const icoCls = clue.critical ? 'z-ico ico-clue ico-clue-critical' : 'z-ico ico-clue';
+                return `
+                <div class="clue-item ${clue.critical ? 'clue-critical' : ''}">
+                    <span class="${icoCls}" aria-hidden="true">${CLUE_ICON_SVG}</span><span class="clue-text">${clue.content}</span>
+                    ${src ? `<div class="clue-perspective" title="${src.replace(/"/g, '&quot;')}">👁 ${src}</div>` : ''}
+                </div>
+            `;
+            }).join('');
+
+            const identityHtml = renderIdentityActionsBlock();
+
+            if (!clueHtml && !identityHtml) {
                 cluesList.innerHTML = '<p style="color: #777;">暂无线索</p>';
                 return;
             }
-
-            cluesList.innerHTML = clues.map(clue => `
-                <div class="clue-item ${clue.critical ? 'clue-critical' : ''}">
-                    ${clue.critical ? '⭐ ' : '📌 '}${clue.content}
-                    ${clue.perspective ? `<div style="color: #7c8b7c; font-size: 12px; margin-top: 3px; line-height: 1.5;">👁 ${clue.perspective}</div>` : ''}
-                </div>
-            `).join('');
+            cluesList.innerHTML = clueHtml + identityHtml;
         }
 
-        // 更新谜团
+        // 更新谜团（右侧面板置顶：待解疑点，红色标记微闪）
         function updateMysteries(mysteries) {
             const mysteriesList = document.getElementById('mysteriesList');
-            if (mysteries.length === 0) {
-                mysteriesList.innerHTML = '<p style="color: #777;">暂无</p>';
+            if (!mysteries || mysteries.length === 0) {
+                mysteriesList.innerHTML = '<p style="color: #7c8b7c; font-size: 13px;">暂无待解谜团</p>';
                 return;
             }
 
             mysteriesList.innerHTML = mysteries.map(m => `
-                <div style="padding: 6px 0; color: #d32f2f; font-size: 14px; font-weight: 500; line-height: 1.6;">❓ ${m}</div>
+                <div class="mystery-item"><span class="mystery-bullet" aria-hidden="true">?</span><span class="mystery-text">${m}</span></div>
             `).join('');
         }
 
@@ -1232,11 +2705,6 @@
             document.getElementById('progressText').textContent = `${progress.toFixed(0)}%`;
             document.getElementById('progressFill').style.width = `${progress}%`;
             document.getElementById('reasoningLevel').textContent = `Lv.${state.ability.reasoning_level}`;
-
-            document.getElementById('abilityObservation').textContent = `Lv.${state.ability.observation}`;
-            document.getElementById('abilityLogic').textContent = `Lv.${state.ability.logic}`;
-            document.getElementById('abilityAssociation').textContent = `Lv.${state.ability.association}`;
-            document.getElementById('abilityKnowledge').textContent = `Lv.${state.ability.knowledge}`;
 
             // 更新增益
             const bonusesList = document.getElementById('bonusesList');
@@ -1252,26 +2720,9 @@
             updateActions(state.identity_actions || []);
         }
 
-        // 渲染身份专属行动按钮
+        // 缓存身份专属行动（已并入「已知线索」列表展示，不再单独成块）
         function updateActions(actions) {
-            const section = document.getElementById('identityActionsSection');
-            const list = document.getElementById('actionsList');
-            if (!section || !list) return;
-
-            // 缓存行动列表，点击时用 id 反查行动名（气泡里显示名字而不是UUID）
             window._identityActions = actions || [];
-
-            if (!actions || actions.length === 0) {
-                section.classList.add('hidden');
-                return;
-            }
-            section.classList.remove('hidden');
-            list.innerHTML = actions.map(a => `
-                <button class="action-card" data-action-btn ${a.used ? 'disabled' : ''} onclick="doIdentityAction('${a.id}')">
-                    <div style="font-weight: 600;">🎭 ${a.name}${a.used ? ' <span style="color:#9caf9c; font-size:12px; font-weight:400;">（已使用）</span>' : ''}</div>
-                    <div style="font-size: 12px; color: #5c6e5c; margin-top: 2px; line-height: 1.5;">${a.desc}</div>
-                </button>
-            `).join('');
         }
 
         // 执行身份专属行动（免费）
@@ -1280,19 +2731,45 @@
             await sendAction('identity_action', actionId, a ? a.name : null);
         }
 
-        // 页面加载时检查是否有可恢复的上局存档
+        // 页面加载时检查是否有可恢复的上局存档（已搬进个人资料弹窗）
         async function checkResume() {
             try {
-                const response = await fetch(`${API_BASE}/api/game/resume`);
+                const response = await apiFetch(`/api/game/resume`);
                 const result = await response.json().catch(() => null);
                 if (result && result.success && result.has_save && result.data) {
                     window._resumeData = result.data;
-                    const gs = result.data.game_state;
-                    document.getElementById('resumeLabel').textContent =
-                        `▶️ 继续上局《${gs.case.title}》（${gs.user_identity} · 剩余${gs.remaining_turns}次推理）`;
-                    document.getElementById('resumeBtn').classList.remove('hidden');
                 }
             } catch (e) { /* 后端未启动或无存档，忽略 */ }
+        }
+        // 在个人资料弹窗里渲染继续上局卡片；每次打开时调用
+        function renderResumeCard() {
+            const data = window._resumeData;
+            const slot = document.getElementById('profileResumeSlot');
+            const card = document.getElementById('profileResumeCard');
+            if (!slot || !card) return;
+            if (!data || !data.game_state || !data.game_state.case) {
+                slot.classList.add('hidden');
+                card.innerHTML = '';
+                return;
+            }
+            const gs = data.game_state;
+            const caseTitle = gs.case.title || '未命名案件';
+
+            // 仿设计图：整条橙色主按钮（左侧案件名，右侧「继续」小胶囊）
+            card.innerHTML = '';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'profile-resume-btn';
+            const label = document.createElement('span');
+            label.className = 'prb-label';
+            label.textContent = caseTitle;
+            const go = document.createElement('span');
+            go.className = 'prb-go';
+            go.textContent = '继续';
+            btn.appendChild(label); btn.appendChild(go);
+            btn.addEventListener('click', () => { closeProfile(); resumeGame(); });
+            card.appendChild(btn);
+            slot.classList.remove('hidden');
         }
 
         // 恢复上局：重建案件界面 + 重放对话流水
@@ -1303,8 +2780,7 @@
             currentGameId = data.game_id;
             currentMode = data.game_state.mode;
 
-            document.getElementById('startModal').classList.remove('active');
-            document.getElementById('gameScreen').classList.remove('hidden');
+            showGameScreen();
 
             displayCaseInfo(data);
 
@@ -1357,7 +2833,7 @@
                 return;
             }
 
-            if (!confirm('确定要提交真相验证吗？这将消耗验证机会。')) {
+            if (!confirm('确定要提交真相验证吗？这将消耗 1 次验证机会。\n\n还原度 >60% 即可破案（升 1 级），>80% 为完美还原（升 2 级）。')) {
                 return;
             }
 
@@ -1376,6 +2852,9 @@
             box.innerHTML = people.map(p => `<span class="person-chip" onclick="selectAskPerson(this)">${p}</span>`).join('');
             document.getElementById('askPersonCustom').value = '';
             document.getElementById('askPersonQuestion').value = '';
+            // 默认选中第一个人物，避免空选（可点击切换或取消）
+            const first = box.querySelector('.person-chip');
+            if (first) first.classList.add('selected');
             document.getElementById('askPersonModal').classList.add('active');
         }
 
@@ -1446,7 +2925,7 @@
             const aiBubble = addTypingBubble();
 
             try {
-                const response = await fetch(`${API_BASE}/api/game/action/stream`, {
+                const response = await apiFetch(`/api/game/action/stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1494,7 +2973,7 @@
         // 老版非流式行动（兜底）
         async function legacySendAction(actionType, content, aiBubble) {
             try {
-                const response = await fetch(`${API_BASE}/api/game/action`, {
+                const response = await apiFetch(`/api/game/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1533,6 +3012,18 @@
             refreshProfileBadge();
         }
 
+        // 正文里的换行只保留单行：把连续空行压成一个换行，并去掉首尾空行。
+        // AI 输出的段落间普遍带 \n\n（还常见 \n\n\n），配合 pre-wrap 会显示成
+        // 大段空白 —— 这里统一压平，只靠换行分隔。
+        function collapseBlankLines(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/\r\n?/g, '\n')      // 统一换行符
+                .replace(/[ \t]+\n/g, '\n')   // 去掉行尾空格
+                .replace(/\n{2,}/g, '\n')     // 连续空行 → 单个换行
+                .replace(/^\n+|\n+$/g, '');   // 去掉首尾空行
+        }
+
         // 添加对话到历史（微信气泡样式：用户在右，AI在左）
         function addInquiryToHistory(role, content) {
             const historyDiv = document.getElementById('inquiryHistory');
@@ -1548,11 +3039,15 @@
 
             const avatar = document.createElement('div');
             avatar.className = 'chat-avatar';
-            avatar.textContent = role === 'user' ? '👤' : '🧩';
+            // 可爱头像：AI=小猫，玩家=小狗（与首页素材一致）
+            const avImg = document.createElement('img');
+            avImg.src = role === 'user' ? 'dog.webp' : 'cat.webp';
+            avImg.alt = '';
+            avatar.appendChild(avImg);
 
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
-            bubble.textContent = content;
+            bubble.textContent = collapseBlankLines(content);
 
             row.appendChild(avatar);
             row.appendChild(bubble);
@@ -1576,7 +3071,7 @@
                 setBusy(true);
                 showNotification('正在生成习题...', 'info');
 
-                const response = await fetch(`${API_BASE}/api/game/action`, {
+                const response = await apiFetch(`/api/game/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1596,8 +3091,7 @@
                 const data = result.data;
                 currentExercise = data.exercise;
 
-                // 填充模态框
-                document.getElementById('exerciseIntro').textContent = data.intro || '';
+                // 填充模态框（介绍文案已按需求删除，仅保留标题+题目）
                 document.getElementById('exerciseQuestion').textContent = `【${currentExercise.knowledge_point}】\n${currentExercise.question}`;
 
                 const optionsDiv = document.getElementById('exerciseOptions');
@@ -1609,7 +3103,7 @@
                 if (isObjective) {
                     // 选择题/判断题：单选按钮
                     optionsDiv.innerHTML = currentExercise.options.map((opt, i) => `
-                        <label style="display:block; padding:10px 14px; margin:6px 0; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer;">
+                        <label class="exercise-opt">
                             <input type="radio" name="exerciseOption" value="${opt}" style="margin-right:10px;">${opt}
                         </label>
                     `).join('');
@@ -1645,7 +3139,7 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = '评分中...';
 
-                const response = await fetch(`${API_BASE}/api/game/exercise/submit`, {
+                const response = await apiFetch(`/api/game/exercise/submit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1730,7 +3224,50 @@
             }
         });
 
-        // 上传学习材料（PDF/TXT/MD），提取文本填入输入框
+        // ==================== 学习材料弹窗 ====================
+        function openLearningDialog() {
+            const dlg = document.getElementById('learningDialog');
+            const ta = document.getElementById('learningContent');
+            // 打开时回填已确认的材料
+            if (!ta.value && learningMaterialText) ta.value = learningMaterialText;
+            updateLearningCount();
+            dlg.classList.add('active');
+        }
+
+        function closeLearningDialog() {
+            document.getElementById('learningDialog').classList.remove('active');
+        }
+
+        function onLearningTextInput() {
+            updateLearningCount();
+        }
+
+        function updateLearningCount() {
+            const ta = document.getElementById('learningContent');
+            const n = (ta.value || '').length;
+            document.getElementById('learnCharCount').textContent = `${n} 字`;
+        }
+
+        // 确认材料：暂存并回显到开始页
+        function confirmLearningDialog() {
+            const ta = document.getElementById('learningContent');
+            const text = (ta.value || '').trim();
+            if (!text) {
+                showNotification('请先上传文件或粘贴学习材料', 'error');
+                return;
+            }
+            learningMaterialText = text;
+            const pv = document.getElementById('learningPreview');
+            const pvText = document.getElementById('learningPreviewText');
+            // 预览只显示开头，避免太长
+            const brief = text.replace(/\s+/g, ' ').slice(0, 40);
+            pvText.textContent = `${brief}${text.length > 40 ? '…' : ''}（共 ${text.length} 字）`;
+            pv.classList.remove('hidden');
+            closeLearningDialog();
+            showNotification('✅ 学习材料已就绪，点「开始」即可', 'success');
+        }
+
+        // 上传学习材料（PDF / Word / TXT / MD），提取文本填入输入框
         async function uploadLearningFile(input) {
             const file = input.files && input.files[0];
             if (!file) return;
@@ -1752,7 +3289,7 @@
             try {
                 const fd = new FormData();
                 fd.append('file', file);
-                const resp = await fetch(`${API_BASE}/api/learning/upload`, {
+                const resp = await apiFetch(`/api/learning/upload`, {
                     method: 'POST',
                     body: fd
                 });
@@ -1763,6 +3300,7 @@
                     return;
                 }
                 document.getElementById('learningContent').value = data.text;
+                updateLearningCount();
                 showHint(`✅ 已载入「${data.filename}」共 ${data.chars} 字${data.truncated ? '（超长已截断）' : ''}`, false);
             } catch (err) {
                 showHint('❌ 上传失败：' + err.message, true);
@@ -1770,24 +3308,104 @@
             input.value = '';
         }
 
+        // 拖拽上传（拖到投放区即读文件）
+        (function initLearnDrop() {
+            const drop = document.getElementById('learnDrop');
+            if (!drop) return;
+            ['dragenter', 'dragover'].forEach(ev => {
+                drop.addEventListener(ev, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    drop.classList.add('dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach(ev => {
+                drop.addEventListener(ev, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (ev === 'dragleave' && drop.contains(e.relatedTarget)) return;
+                    drop.classList.remove('dragover');
+                });
+            });
+            drop.addEventListener('drop', e => {
+                const files = e.dataTransfer && e.dataTransfer.files;
+                if (files && files.length) {
+                    // 借用隐藏 input 的处理逻辑
+                    const inp = document.getElementById('learningFile');
+                    inp.files = files;
+                    uploadLearningFile(inp);
+                }
+            });
+        })();
+
+        // ==================== 页面状态记忆（刷新后停在原界面） ====================
+        // 刷新页面时若上次停留在游戏界面且存档仍在，就直接恢复到游戏页，
+        // 不再弹回首页。返回首页（如结算后点「再来一局」）时才清掉这个标记。
+        const SCREEN_KEY = 'hs_screen';
+
+        function setScreen(screen) {
+            try { sessionStorage.setItem(SCREEN_KEY, screen); } catch (e) { /* 隐私模式忽略 */ }
+        }
+
+        function getScreen() {
+            try { return sessionStorage.getItem(SCREEN_KEY) || 'start'; } catch (e) { return 'start'; }
+        }
+
+        // 进入游戏界面：统一入口（换界面 + 记住状态）
+        function showGameScreen() {
+            document.getElementById('startModal').classList.remove('active');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            setScreen('game');
+        }
+
+        // 回到首页：统一入口（换界面 + 清状态）
+        function showStartScreen() {
+            document.getElementById('startModal').classList.add('active');
+            document.getElementById('gameScreen').classList.add('hidden');
+            setScreen('start');
+        }
+
+        // 「再来一局」：明确回到首页并从存档清掉已结束的对局，
+        // 否则刷新会被 initPageState 又拉回游戏页
+        function restartToHome() {
+            showStartScreen();
+            window._resumeData = null;
+            document.getElementById('profileResumeSlot')?.classList.add('hidden');
+        }
+
+        // 顶栏「返回」：回首页。存档保留，之后可从个人资料「继续上局」回到这一局。
+        function backToHome() {
+            showStartScreen();
+            showNotification('已返回首页，可从右上角个人资料「继续上局」回来', 'info');
+        }
+
         // ==================== 个人资料 ====================
         async function openProfile() {
             document.getElementById('profileModal').classList.add('active');
             document.getElementById('profileRecords').innerHTML =
                 '<p style="color:#7c8b7c; font-size:14px; text-align:center;">加载中...</p>';
+            document.getElementById('profileUnfinished').innerHTML =
+                '<p style="color:#7c8b7c; font-size:14px; text-align:center;">加载中...</p>';
+            // 渲染继续上局卡片（如果有存档）
+            renderResumeCard();
+            // 刷新知乎登录状态显示
+            refreshZhihuMe();
             try {
-                const resp = await fetch(`${API_BASE}/api/profile`);
+                const resp = await apiFetch(`/api/profile`);
                 if (!resp.ok) throw new Error('bad status ' + resp.status);
                 const p = await resp.json();
                 document.getElementById('profileLevelBig').textContent = `Lv.${p.level}`;
-                document.getElementById('profileFabLevel').textContent = `Lv.${p.level}`;
                 document.getElementById('profileStats').innerHTML =
-                    `胜 ${p.wins} · 负 ${p.losses}<br>胜率 ${p.win_rate}%`;
+                    `胜率 ${p.win_rate}%`;
                 renderProfileRecords(p.records);
+                renderProfileUnfinished(p.unfinished);
             } catch (e) {
                 document.getElementById('profileLevelBig').textContent = 'Lv.?';
                 document.getElementById('profileRecords').innerHTML =
-                    '<p style="color:#c62828; font-size:14px; text-align:center; padding:12px 0;">加载失败：请重启后端（run_backend.bat）后刷新页面</p>';
+                    '<p style="color:#c62828; font-size:14px; text-align:center; padding:12px 0; line-height:1.7;">'
+                    + '连接后端失败：' + e.message + '<br>'
+                    + '<span style="color:#7c8b7c; font-size:13px;">请确认后端已启动（运行 run_backend.bat），'
+                    + '或改用 <a href="http://localhost:8000" style="color:#2e7d32; font-weight:700;">http://localhost:8000</a> 打开本页</span></p>';
             }
         }
 
@@ -1795,35 +3413,116 @@
             document.getElementById('profileModal').classList.remove('active');
         }
 
+        // ===== 一句话开局弹窗 =====
+        function openSentenceDialog() {
+            if (startMode !== 'sentence') switchStartMode('sentence');
+            const dlg = document.getElementById('sentenceDialog');
+            const input = document.getElementById('sentenceDialogInput');
+            // 用隐藏 quickSentence 的当前值回填，方便修改
+            input.value = document.getElementById('quickSentence').value;
+            dlg.classList.add('active');
+            updateSentenceCount();
+            setTimeout(() => input.focus(), 80);
+        }
+        function closeSentenceDialog() {
+            document.getElementById('sentenceDialog').classList.remove('active');
+        }
+        function updateSentenceCount() {
+            const v = document.getElementById('sentenceDialogInput').value;
+            document.getElementById('sentenceDialogCount').textContent = v.length + ' / 200';
+        }
+        function confirmSentence() {
+            const v = document.getElementById('sentenceDialogInput').value.trim();
+            if (!v) {
+                showNotification('请输入一句话开局，例如：我是一个学生', 'error');
+                return;
+            }
+            // 同步到隐藏的 quickSentence（startGame 读取的数据源）
+            document.getElementById('quickSentence').value = v;
+            // 主面板显示预览
+            const preview = document.getElementById('sentencePreview');
+            const text = document.getElementById('sentencePreviewText');
+            text.textContent = v.length > 50 ? v.slice(0, 50) + '…' : v;
+            preview.classList.remove('hidden');
+            closeSentenceDialog();
+            // 滚动到开始按钮
+            setTimeout(() => {
+                const btn = document.getElementById('startBtn');
+                if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        // 渲染未完成的案件（当前自动存档那一局，可点击继续）
+        function renderProfileUnfinished(u) {
+            const box = document.getElementById('profileUnfinished');
+            if (!u || !u.title) {
+                box.innerHTML = '<p class="rec-empty">暂无未完成的案件</p>';
+                return;
+            }
+            const progress = Math.round(Number(u.progress) || 0);
+            return box.innerHTML = `<div class="rec-row" style="cursor: pointer;" onclick="resumeFromProfile()" title="点击继续这一局">
+                    <span class="rec-ico"><svg viewBox="0 0 32 32">
+                            <circle cx="16" cy="16" r="12.5" fill="#fff4d6" stroke="#c98a12" stroke-width="2" stroke-dasharray="5 3.5"/>
+                            <path d="M16 9.5V16l4.4 2.9" fill="none" stroke="#c98a12" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg></span>
+                    <div class="rec-title">《${u.title}》</div>
+                    <div class="rec-right">
+                        <div class="rec-result" style="color:#c98a12;">未完成 ${progress}%</div>
+                        ${u.saved_at ? `<div class="rec-time">${u.saved_at.replace(/^[0-9]{4}-/, '').replace('T', ' ')}</div>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        // 从个人资料继续未完成的案件（拉最新存档再进游戏）
+        async function resumeFromProfile() {
+            try {
+                const resp = await apiFetch(`/api/game/resume`);
+                const r = await resp.json();
+                if (r && r.success && r.has_save && r.data) {
+                    window._resumeData = r.data;
+                }
+            } catch (e) { /* 拉取失败则用旧缓存 */ }
+            closeProfile();
+            resumeGame();
+        }
+
         function renderProfileRecords(records) {
             const box = document.getElementById('profileRecords');
             if (!records || !records.length) {
-                box.innerHTML = '<p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">还没有完成过案件，去开一局吧！</p>';
+                box.innerHTML = '<p class="rec-empty">还没有完成过案件，去开一局吧！</p>';
                 return;
             }
             box.innerHTML = records.map(r => {
                 const win = r.result === 'win';
                 const d = new Date(r.ts * 1000);
                 const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                return `<div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(255,255,255,0.75); border-radius:10px; border:1px solid rgba(46,125,50,0.12);">
-                    <span style="font-size:18px;">${win ? '✅' : '❌'}</span>
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-weight:600; color:#2e4a2e; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">《${r.title}》</div>
-                        <div style="font-size:12px; color:#7c8b7c; margin-top:2px;">身份：${r.identity} · 推理进度${r.progress}% · 用了${r.turns_used}次推理 · ${dateStr}</div>
+                // 贴纸风结果图标：成功=绿勾徽章，失败=红叉徽章
+                const icon = win
+                    ? `<span class="rec-ico"><svg viewBox="0 0 32 32">
+                           <circle cx="16" cy="16" r="12.5" fill="#eaf6dd" stroke="#2f6b28" stroke-width="2"/>
+                           <path d="M10.6 16.4l3.7 3.7 7.3-7.9" fill="none" stroke="#2f6b28" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                       </svg></span>`
+                    : `<span class="rec-ico"><svg viewBox="0 0 32 32">
+                           <circle cx="16" cy="16" r="12.5" fill="#fdeceb" stroke="#b5322a" stroke-width="2"/>
+                           <path d="M12 12l8 8M20 12l-8 8" fill="none" stroke="#b5322a" stroke-width="2.6" stroke-linecap="round"/>
+                           <path d="M27 5.6l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z" fill="#e8746a"/>
+                       </svg></span>`;
+                return `<div class="rec-row">${icon}
+                    <div class="rec-title">《${r.title}》</div>
+                    <div class="rec-right">
+                        <div class="rec-result ${win ? 'win' : 'lose'}">${win ? '成功' : '失败'}</div>
+                        <div class="rec-time">${dateStr}</div>
                     </div>
-                    <span style="font-size:12px; font-weight:700; color:${win ? '#2e7d32' : '#c62828'}; flex-shrink:0;">${win ? '成功' : '失败'}</span>
                 </div>`;
             }).join('');
         }
 
-        // 刷新等级徽章（悬浮卡 + 游戏内顶栏「推理等级」）
+        // 刷新等级徽章（游戏内顶栏「推理等级」）
         async function refreshProfileBadge() {
             try {
-                const resp = await fetch(`${API_BASE}/api/profile`);
+                const resp = await apiFetch(`/api/profile`);
                 if (!resp.ok) return;
                 const p = await resp.json();
-                const fab = document.getElementById('profileFabLevel');
-                if (fab) fab.textContent = `Lv.${p.level}`;
                 const bar = document.getElementById('reasoningLevel');
                 if (bar) bar.textContent = `Lv.${p.level}`;
             } catch (e) { /* 后端未启动，忽略 */ }
@@ -1840,12 +3539,12 @@
             const loginBtn = document.getElementById('zhihuLoginBtn');
             const logoutBtn = document.getElementById('zhihuLogoutBtn');
             try {
-                const resp = await fetch(`${API_BASE}/api/zhihu/me`, { credentials: 'include' });
+                const resp = await apiFetch(`/api/zhihu/me`, { credentials: 'include' });
                 const me = await resp.json();
                 if (me.logged_in) {
                     const u = me.user || {};
                     nameEl.textContent = (me.mock ? '演示会话：' : '') + (u.fullname || '知乎用户');
-                    hintEl.textContent = me.mock ? '演示登录·非真实知乎账号（填入OAuth凭证后自动变真登录）' : '已通过知乎授权登录';
+                    if (hintEl) hintEl.textContent = me.mock ? '演示登录·非真实知乎账号（填入OAuth凭证后自动变真登录）' : '已通过知乎授权登录';
                     if (u.avatar_path) {
                         avatarEl.innerHTML = `<img src="${u.avatar_path}" style="width:100%;height:100%;object-fit:cover;" alt="">`;
                     } else {
@@ -1855,8 +3554,8 @@
                     logoutBtn.classList.remove('hidden');
                 } else {
                     nameEl.textContent = '未登录知乎';
-                    hintEl.textContent = zhihuLoginConfigured ? '登录后可在作品页展示账号身份' : '后端未配置OAuth，登录为演示模式';
-                    avatarEl.textContent = '知乎';
+                    if (hintEl) hintEl.textContent = zhihuLoginConfigured ? '登录后可在作品页展示账号身份' : '后端未配置OAuth，登录为演示模式';
+                    avatarEl.textContent = '知';
                     loginBtn.classList.remove('hidden');
                     logoutBtn.classList.add('hidden');
                 }
@@ -1866,10 +3565,10 @@
         async function zhihuLogin() {
             try {
                 // 先查后端是否已配置凭证：未配置→演示登录（fetch建会话）；已配置→跳知乎授权页
-                const cfgResp = await fetch(`${API_BASE}/api/zhihu/config`);
+                const cfgResp = await apiFetch(`/api/zhihu/config`);
                 const cfg = await cfgResp.json();
                 if (!cfg.oauth_configured) {
-                    await fetch(`${API_BASE}/api/zhihu/login`, { credentials: 'include' });
+                    await apiFetch(`/api/zhihu/login`, { credentials: 'include' });
                     showNotification('已创建演示登录会话（未配置知乎OAuth凭证）', 'success');
                     refreshZhihuMe();
                     return;
@@ -1883,7 +3582,7 @@
 
         async function zhihuLogout() {
             try {
-                await fetch(`${API_BASE}/api/zhihu/logout`, { method: 'POST', credentials: 'include' });
+                await apiFetch(`/api/zhihu/logout`, { method: 'POST', credentials: 'include' });
                 showNotification('已退出知乎登录', 'success');
             } catch (e) { /* ignore */ }
             refreshZhihuMe();
@@ -1892,13 +3591,18 @@
         function closeZhihuStories() {
             document.getElementById('zhihuStoryModal').classList.remove('active');
         }
+        // 点击弹窗遮罩空白处自动关闭（列表选择类弹窗；输入类弹窗不启用，防误触）
+        document.getElementById('zhihuStoryModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeZhihuStories();
+        });
 
         async function openZhihuStories() {
+            startMode = 'story';
             document.getElementById('zhihuStoryModal').classList.add('active');
             const box = document.getElementById('zhihuStoryList');
             box.innerHTML = '<p style="color:#7c8b7c; font-size:14px; text-align:center; padding:20px 0;">加载中...</p>';
             try {
-                const resp = await fetch(`${API_BASE}/api/zhihu/stories`);
+                const resp = await apiFetch(`/api/zhihu/stories`);
                 const data = await resp.json();
                 if (!data.success) {
                     box.innerHTML = `<p style="color:#c62828; font-size:13px; text-align:center; padding:16px 8px;">${data.error || '故事列表获取失败'}</p>`;
@@ -1924,14 +3628,17 @@
                     </div>`;
                 }).join('');
             } catch (e) {
-                box.innerHTML = `<p style="color:#c62828; font-size:13px; text-align:center; padding:16px 8px;">加载失败：${e.message}（请确认后端已启动）</p>`;
+                box.innerHTML = `<p style="color:#c62828; font-size:13px; text-align:center; padding:16px 8px; line-height:1.7;">`
+                    + `连接后端失败：${e.message}<br>`
+                    + `<span style="color:#7c8b7c;">请确认后端已启动（运行 run_backend.bat），或改用 `
+                    + `<a href="http://localhost:8000" style="color:#2e7d32; font-weight:700;">http://localhost:8000</a> 打开本页</span></p>`;
             }
         }
 
         async function adaptZhihuStory(workId) {
             showNotification('正在把知乎故事改编成汤面...', 'success');
             try {
-                const resp = await fetch(`${API_BASE}/api/zhihu/story/${encodeURIComponent(workId)}/adapt`);
+                const resp = await apiFetch(`/api/zhihu/story/${encodeURIComponent(workId)}/adapt`);
                 if (!resp.ok) {
                     const err = await resp.json().catch(() => ({}));
                     showNotification('改编失败：' + (err.detail || resp.status), 'error');
@@ -1953,7 +3660,7 @@
         // 初始化：查凭证配置 + 登录状态 + 处理OAuth回调跳回参数
         async function initZhihu() {
             try {
-                const cfgResp = await fetch(`${API_BASE}/api/zhihu/config`);
+                const cfgResp = await apiFetch(`/api/zhihu/config`);
                 zhihuLoginConfigured = (await cfgResp.json()).oauth_configured;
             } catch (e) { /* ignore */ }
             const params = new URLSearchParams(window.location.search);
@@ -1970,8 +3677,70 @@
         }
         initZhihu();
 
-        // 页面加载：检查可恢复的上局存档
-        checkResume();
+        // ==================== 面板宽度拖动 ====================
+        (function initPanelResizer() {
+            const panel = document.querySelector('.reasoning-panel');
+            const handle = document.getElementById('panelResizer');
+            if (!panel || !handle) return;
+
+            const KEY = 'hg_reasoning_width', MIN = 240, MAX = 560, DEF = 350;
+
+            // 恢复上次宽度
+            const saved = parseInt(localStorage.getItem(KEY), 10);
+            if (saved >= MIN && saved <= MAX) panel.style.width = saved + 'px';
+
+            let dragging = false, startX = 0, startW = 0;
+
+            handle.addEventListener('mousedown', (e) => {
+                dragging = true;
+                startX = e.clientX;
+                startW = panel.getBoundingClientRect().width;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            // 双击恢复默认宽度
+            handle.addEventListener('dblclick', () => {
+                panel.style.width = DEF + 'px';
+                localStorage.setItem(KEY, String(DEF));
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                // 分隔条在面板左侧：向左拖 → 面板变宽
+                const w = Math.min(MAX, Math.max(MIN, startW - (e.clientX - startX)));
+                panel.style.width = w + 'px';
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (!dragging) return;
+                dragging = false;
+                handle.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                const w = parseInt(panel.style.width, 10);
+                if (w >= MIN && w <= MAX) localStorage.setItem(KEY, String(w));
+            });
+        })();
+
+        // 页面加载：检查可恢复的上局存档；若上次停留在游戏页则直接恢复
+        (async function initPageState() {
+            await checkResume();
+            // 上次在游戏页 且 确实有存档 → 直接恢复，不弹回首页
+            if (getScreen() === 'game' && window._resumeData
+                && window._resumeData.game_state && window._resumeData.game_state.case) {
+                try {
+                    resumeGame();
+                } catch (e) {
+                    console.warn('[恢复] 失败，回到首页', e);
+                    showStartScreen();
+                }
+            } else {
+                showStartScreen();
+            }
+        })();
         refreshProfileBadge();
     </script>
 </body>
