@@ -61,21 +61,30 @@ def collect_files():
     return out
 
 
-def api_request(method: str, path: str, body: dict = None, raw: bool = False):
+def api_request(method: str, path: str, body: dict = None, raw: bool = False, retries: int = 3):
+    """带重试的 API 请求：网络抖动（10053/超时）重试，HTTP 语义错误（4xx/5xx）不重试"""
     url = API + path
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method, headers={
-        "Authorization": "Bearer " + TOKEN,
-        "User-Agent": "turtle-soup-uploader",
-        "Accept": "application/vnd.github+json",
-        "Content-Type": "application/json",
-    })
-    try:
-        r = urllib.request.urlopen(req, timeout=30)
-        payload = r.read()
-        return r.status, (payload if raw else json.loads(payload or b"{}"))
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"{}")
+    last_err = None
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=data, method=method, headers={
+            "Authorization": "Bearer " + TOKEN,
+            "User-Agent": "turtle-soup-uploader",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+        })
+        try:
+            r = urllib.request.urlopen(req, timeout=30)
+            payload = r.read()
+            return r.status, (payload if raw else json.loads(payload or b"{}"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read() or b"{}")
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as e:
+            last_err = e
+            wait = 2 * (attempt + 1)
+            print(f"  网络异常({e})，{wait}s 后第 {attempt + 2}/{retries} 次尝试...")
+            time.sleep(wait)
+    raise last_err
 
 
 def main():
