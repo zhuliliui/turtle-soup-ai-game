@@ -217,6 +217,25 @@ async def zhihu_login(request: Request, from_origin: Optional[str] = None):
     origin = (from_origin or "").strip()
     if origin and not origin.startswith(("http://", "https://")):
         origin = ""
+
+    # 防呆：redirect_uri 登记在哪个域，真实登录就必须从哪个域的页面发起。
+    # state 存本进程内存——从别的域（如本地 localhost）发起时，知乎会把授权码
+    # 回调到登记域，那边没有对应 state，必然"state 无效"。提前拦截给出明确提示。
+    cfg_redirect = cfg["redirect_uri"]
+    if cfg_redirect:
+        registered = urllib.parse.urlsplit(cfg_redirect)
+        current = urllib.parse.urlsplit(str(request.base_url))
+        registered_origin = f"{registered.scheme or 'https'}://{registered.netloc}".lower().replace("127.0.0.1", "localhost")
+        current_origin = f"{current.scheme or 'http'}://{current.netloc}".lower().replace("127.0.0.1", "localhost")
+        if registered_origin and current_origin != registered_origin:
+            reason = f"知乎登录请在正式站点发起：{registered_origin}（当前页面 {current_origin} 的后端拿不到回调）"
+            if origin:
+                sep = "&" if "?" in origin else "?"
+                return RedirectResponse(
+                    f"{origin.rstrip('/')}/{sep}zhihu_login=error&reason={urllib.parse.quote(reason)}",
+                    status_code=302)
+            return JSONResponse({"success": False, "error": reason}, status_code=400)
+
     state = _new_state(origin)
     params = urllib.parse.urlencode({
         "redirect_uri": _callback_uri(request),
