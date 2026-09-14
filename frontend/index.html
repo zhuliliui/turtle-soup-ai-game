@@ -2273,21 +2273,19 @@
     </div>
 
     <script>
-        // API 基址解析：
-        // 1) 后端托管（同源）或 https 部署 → 用 location.origin
-        // 2) 本地用静态服务器（如 8080）打开 → 回退到 http://localhost:8000
-        // 另外提供 apiFetch()：网络失败时自动在「同源」与「localhost:8000」之间重试一次，
-        // 避免因打开方式不同（8080 / file:// / 8000）导致 Failed to fetch。
+        // API 基址解析：页面由后端托管（本地 8000 / 云端同源），一律「同源优先」。
+        // 关键：知乎登录是整页跳转 + state 存后端内存，请求打到哪台后端，
+        // state 就在哪台；而 OAuth 回调固定落在登记域（云端）。若云端页面把
+        // 请求发给 localhost:8000，state 在本地、回调在云端，必然「state 无效」。
+        // 因此同源必须排第一；localhost:8000 仅作本地静态打开时的网络兜底。
         const API_CANDIDATES = (() => {
             const list = [];
             const push = (u) => { if (u && !list.includes(u)) list.push(u); };
             const isHttp = location.protocol === 'http:' || location.protocol === 'https:';
-            if (isHttp && location.port === '8000') {
-                push(location.origin);            // 已由后端托管
-            } else {
-                push('http://localhost:8000');    // 8080 / file:// 等本地开发
-                if (isHttp) push(location.origin); // 公网/反代同源兜底
+            if (isHttp) {
+                push(location.origin);            // 同源（后端托管 / 云端部署）——必须第一优先
             }
+            push('http://localhost:8000');        // 本地开发兜底（仅网络失败时才会用到）
             return list;
         })();
         const API_BASE = API_CANDIDATES[0];
