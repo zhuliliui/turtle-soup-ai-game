@@ -1,4 +1,5 @@
 """游戏流程控制器 - 整合所有模块的核心协调者"""
+import time
 from typing import Dict, List, Optional, Tuple, Callable
 from models.game_state import (
     GameState, GameMode, InquiryType, InquiryRecord,
@@ -8,7 +9,7 @@ from ai_host.host_persona import HostPersona
 from ai_host.reasoning_engine import ReasoningEngine
 from ai_host.llm_client import LLMError
 from game_engine.case_generator import CaseGenerator
-from player_profile import record_game_result
+from player_profile import record_game_result, load_profile, clue_count_for_level, turns_for_level
 from learning.learning_system import (
     KnowledgeExtractor, ExerciseGenerator, ExerciseGrader,
     Exercise, LearningMaterial, ExerciseDifficulty
@@ -18,6 +19,7 @@ import time
 import json
 import os
 import re
+import random
 
 # 存档文件路径（单槽位：最新一局）
 SAVE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "game_save.json")
@@ -58,6 +60,8 @@ class GameController:
         self.game_state: Optional[GameState] = None
         self.current_exercise: Optional[Exercise] = None
         self.learning_material: Optional[LearningMaterial] = None
+        # 本局开局线索数（按等级决定，start_new_game 里赋值）
+        self._clue_count: int = 3
 
     async def start_new_game(
         self,
@@ -91,6 +95,19 @@ class GameController:
             user_identity=(identity or "").strip()
         )
 
+        # 同步个人资料等级到游戏内「推理等级」顶栏展示
+        # 按个人资料等级决定开局资源（线索数 + 推理机会）
+        # （self.game_state.ability.reasoning_level 默认是 1，若不从
+        #   player_profile.json 读回，游戏页永远显示 Lv.1，与首页的 Lv.N 不一致）
+        try:
+            _lv = max(1, int(load_profile().get("level", 1)))
+            self.game_state.ability.reasoning_level = _lv
+            self.game_state.total_turns = turns_for_level(_lv)
+            self.game_state.remaining_turns = self.game_state.total_turns
+            self._clue_count = clue_count_for_level(_lv)
+        except Exception:
+            self._clue_count = 3
+
         # 学习模式：处理学习材料（无论是否一句话开局，学习内容都要生效）
         if mode == GameMode.LEARNING and learning_content:
             await self._setup_learning_mode(learning_content, subject)
@@ -98,7 +115,7 @@ class GameController:
         # 一句话模式：两层生成（真相层缓存命中时秒出同一案件）
         if premise:
             case, extracted_identity = await self.case_generator.generate_case_from_premise(
-                premise, on_status=on_status
+                premise, on_status=on_status, clue_count=self._clue_count
             )
             if not self.game_state.user_identity:
                 self.game_state.user_identity = extracted_identity
@@ -114,6 +131,9 @@ class GameController:
             {"id": str(uuid.uuid4()), "name": a["name"], "desc": a.get("desc", ""), "result": a["result"], "used": False}
             for a in (case.identity_actions or [])
         ]
+
+        # 开局即按「已持有线索 / 全部线索」刷新一次进度条
+        self.game_state.sync_progress_with_clues()
 
         # 生成欢迎信息
         welcome_message = self.host.greet_player(self.game_state.user_identity, mode.value)
@@ -164,7 +184,8 @@ class GameController:
         if self.game_state.mode == GameMode.ENTERTAINMENT:
             return await self.case_generator.generate_case(
                 self.game_state.user_identity,
-                mode="entertainment"
+                mode="entertainment",
+                clue_count=getattr(self, "_clue_count", 3)
             )
         else:
             # 学习模式：案件关联学习内容
@@ -175,7 +196,8 @@ class GameController:
             return await self.case_generator.generate_case(
                 self.game_state.user_identity,
                 mode="learning",
-                learning_context=learning_context
+                learning_context=learning_context,
+                clue_count=getattr(self, "_clue_count", 3)
             )
 
     async def handle_player_action(
@@ -194,6 +216,13 @@ class GameController:
 
         if not self.game_state or self.game_state.game_over:
             return {"error": "游戏未开始或已结束"}
+
+        # 次数用尽不再直接结束游戏：耗次数的行动先拦截，引导去学习挑战赚机会
+        if action_type in ("question", "hypothesis", "ask_person", "hint") \
+                and self.game_state.remaining_turns <= 0:
+            return {"error": self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )}
 
         if action_type == "question":
             return await self._handle_question(content)
@@ -225,6 +254,14 @@ class GameController:
         """
         if not self.game_state or self.game_state.game_over:
             yield {"type": "error", "message": "游戏未开始或已结束"}
+            return
+
+        # 次数用尽不再直接结束游戏：耗次数的行动先拦截，引导去学习挑战赚机会
+        if action_type in ("question", "hypothesis", "ask_person", "hint") \
+                and self.game_state.remaining_turns <= 0:
+            yield {"type": "error", "message": self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )}
             return
 
         if action_type == "identity_action":
@@ -351,22 +388,16 @@ class GameController:
                 self.game_state.mode == GameMode.LEARNING
             )
 
-        # 检查游戏是否结束
+        # 次数用尽：不结束游戏，提示可以学习挑战赚机会 / 直接还原真相
+        turns_note = ""
         if self.game_state.remaining_turns <= 0:
-            self.game_state.game_over = True
-            game_over_message = await self._generate_game_over_message()
-            level_note = self._record_profile_result(solved=False)
-            if level_note:
-                game_over_message += "\n\n" + level_note
-            self._append_log("ai", game_over_message)
-            self._save_to_disk()
-            return {
-                "ai_response": ai_response,
-                "clue_message": clue_message,
-                "game_over": True,
-                "game_over_message": game_over_message,
-                "game_state": self._serialize_game_state()
-            }
+            turns_note = self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )
+            if clue_message:
+                clue_message += "\n\n" + turns_note
+            else:
+                ai_response += "\n\n" + turns_note
 
         self._save_to_disk()
         return {
@@ -445,8 +476,19 @@ class GameController:
 
         return await self._finalize_verification(truth_claim, state_updates)
 
-    async def _finalize_verification(self, truth_claim: str, state_updates: Dict) -> Dict:
-        """验证收尾：扣验证机会、结算、记录、存档（流式/非流式共用）"""
+    async def _finalize_verification(self, truth_claim: str, payload) -> Dict:
+        """验证收尾：扣验证机会、结算、记录、存档（流式/非流式共用）
+
+        payload 兼容两种形态：
+        - 流式：("final", (ai_response, state_updates)) 解包出的 (ai_response, state_updates) 元组
+        - 非流式：直接传入的 state_updates 字典
+        """
+        if isinstance(payload, tuple):
+            _, state_updates = payload
+        else:
+            state_updates = payload
+        state_updates = state_updates or {}
+
         self.game_state.verification_chances -= 1
 
         self._append_log("user", truth_claim)
@@ -455,19 +497,39 @@ class GameController:
         is_correct = verification_result.get("is_correct", False)
 
         if is_correct:
-            # 破案成功
+            # 破案成功（还原度>60 升1级；>80 优秀升2级）
             self.game_state.case_solved = True
             self.game_state.game_over = True
+
+            is_excellent = bool(verification_result.get("is_excellent", False)) \
+                or _to_float(verification_result.get("completeness", 0)) > 80
+            level_gain = 2 if is_excellent else 1
+            completeness = _to_float(verification_result.get("completeness", 0))
+
+            # 待解谜团逐一揭秘 + 完整真相（让玩家看到全部剧情）
+            mysteries = list(getattr(self.game_state.case, "mysteries", []) or [])
+            mysteries_resolved: List[Tuple[str, str]] = []
+            mysteries_pending: List[str] = []
+            if mysteries:
+                resolved = await self._resolve_mysteries(mysteries)
+                answered_set = {m for m, _ in resolved}
+                mysteries_resolved = resolved
+                mysteries_pending = [m for m in mysteries if m not in answered_set]
 
             success_message = self.host.case_solved(
                 reasoning_path=verification_result.get("reasoning_path_summary", []),
                 key_insights=verification_result.get("key_insights", []),
                 turns_used=self.game_state.total_turns - self.game_state.remaining_turns,
-                total_turns=self.game_state.total_turns
+                total_turns=self.game_state.total_turns,
+                truth=self._format_truth_for_display(),
+                completeness=completeness,
+                is_excellent=is_excellent,
+                mysteries_resolved=mysteries_resolved,
+                mysteries_pending=mysteries_pending
             )
 
-            # 结算个人资料：成功升级
-            level_note = self._record_profile_result(solved=True)
+            # 结算个人资料：成功升级（普通+1 / 优秀+2）
+            level_note = self._record_profile_result(solved=True, level_gain=level_gain)
             if level_note:
                 success_message += "\n\n" + level_note
 
@@ -580,6 +642,7 @@ class GameController:
             perspective="来自询问他人"
         )
         self.game_state.case.revealed_clues.append(clue)
+        self.game_state.sync_progress_with_clues()
 
         self._append_log("user", f"🗣 询问他人：{question}")
         self._append_log("ai", answer)
@@ -594,23 +657,18 @@ class GameController:
         )
         self.game_state.inquiry_history.append(inquiry_record)
 
-        # 问完耗尽最后机会 → 游戏结束
-        game_over_payload = {}
+        # 问完耗尽最后机会：不结束游戏，提示可以学习挑战赚机会 / 直接还原真相
         if self.game_state.remaining_turns <= 0:
-            self.game_state.game_over = True
-            game_over_message = await self._generate_game_over_message()
-            level_note = self._record_profile_result(solved=False)
-            if level_note:
-                game_over_message += "\n\n" + level_note
-            self._append_log("ai", game_over_message)
-            game_over_payload = {"game_over": True, "game_over_message": game_over_message}
+            turns_note = self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )
+            answer = answer + "\n\n" + turns_note
 
         self._save_to_disk()
 
         return {
             "ai_response": answer,
-            "game_state": self._serialize_game_state(),
-            **game_over_payload
+            "game_state": self._serialize_game_state()
         }
 
     async def _handle_identity_action(self, content: str) -> Dict:
@@ -635,9 +693,10 @@ class GameController:
             content=action["result"],
             revealed=True,
             critical=False,
-            perspective=f"来自身份专属行动「{action['name']}」"
+            perspective=f"侦探身份线索「{action['name']}」"
         )
         self.game_state.case.revealed_clues.append(clue)
+        self.game_state.sync_progress_with_clues()
 
         message = self.host.identity_action_result(
             action["name"], action["result"]
@@ -736,13 +795,19 @@ class GameController:
         is_correct = grading_result.get("is_correct", False)
 
         if is_correct:
-            # 答对了，给予奖励
-            reward = await self._grant_learning_reward(self.current_exercise.reward_type)
+            # 答对了，随机发放一种增益
+            reward = await self._grant_learning_reward()
 
             success_message = self.host.learning_success(
-                self.current_exercise.reward_type,
+                reward.get("reward_type", ""),
                 reward["description"]
             )
+
+            # 隐藏线索奖励：把线索全文直接发给玩家（只说「×1」玩家感知不到线索已入手）
+            if reward.get("revealed_clue"):
+                success_message += "\n\n" + self.host.reveal_clue(
+                    reward["revealed_clue"], is_hidden=True
+                )
 
             # 更新学习进度
             if self.game_state.learning:
@@ -785,8 +850,8 @@ class GameController:
                 "game_state": self._serialize_game_state()
             }
 
-    async def _grant_learning_reward(self, reward_type: str) -> Dict:
-        """发放学习奖励"""
+    async def _grant_learning_reward(self, reward_type: str = "") -> Dict:
+        """发放学习奖励（答对后随机抽取一种增益）"""
 
         reward_configs = {
             "insight": {
@@ -804,6 +869,11 @@ class GameController:
                 "ability": "knowledge",
                 "action": "ability_boost"
             },
+            "association": {
+                "description": "🔗 联想 +1\n更容易发现线索间的关联",
+                "ability": "association",
+                "action": "ability_boost"
+            },
             "extra_turn": {
                 "description": "⏳ 推理机会 +1\n增加一次提问机会",
                 "action": "extra_turn"
@@ -814,20 +884,30 @@ class GameController:
             }
         }
 
-        config = reward_configs.get(reward_type, reward_configs["extra_turn"])
+        # 增益随机：答对后从奖励池中随机抽取（不再沿用习题预设的 reward_type）
+        # 隐藏线索已解锁完时权重降低，避免总是退化成「额外机会」
+        pool = ["insight", "logic", "knowledge", "association", "extra_turn", "hidden_clue"]
+        has_hidden = any(not c.revealed for c in self.game_state.case.hidden_clues)
+        if not has_hidden:
+            pool = ["insight", "logic", "knowledge", "association", "extra_turn", "extra_turn"]
+        picked_type = random.choice(pool)
+
+        config = dict(reward_configs.get(picked_type, reward_configs["extra_turn"]))
+        reward_type = picked_type
 
         if config["action"] == "ability_boost":
             self.game_state.ability.gain(config["ability"], 1)
         elif config["action"] == "extra_turn":
             self.game_state.add_bonus_turn()
         elif config["action"] == "reveal_clue":
-            # 揭示一条隐藏线索；若已无隐藏线索则退化为额外推理机会
+            # 揭示一条隐藏线索（随机选一条未解锁的）；若已无隐藏线索则退化为额外推理机会
             unrevealed = [c for c in self.game_state.case.hidden_clues if not c.revealed]
             if unrevealed:
-                clue = unrevealed[0]
+                clue = random.choice(unrevealed)
                 self.game_state.reveal_clue(clue)
                 config["revealed_clue"] = clue.content
             else:
+                reward_type = "extra_turn"
                 config = {
                     "description": "⏳ 推理机会 +1\n（隐藏线索已全部解锁，奖励转换为额外推理机会）",
                     "action": "extra_turn"
@@ -841,6 +921,7 @@ class GameController:
         )
         self.game_state.active_bonuses.append(bonus)
 
+        config["reward_type"] = reward_type
         return config
 
     # ==================== 对话日志 / 磁盘持久化 ====================
@@ -865,6 +946,7 @@ class GameController:
                 "game_id": gs.game_id,
                 "mode": gs.mode.value,
                 "user_identity": gs.user_identity,
+                "saved_at": time.strftime("%Y-%m-%d %H:%M"),
                 "case": {
                     "title": gs.case.title,
                     "background": gs.case.background,
@@ -976,6 +1058,11 @@ class GameController:
             gs.ability.association = int(ab.get("association", 1))
             gs.ability.knowledge = int(ab.get("knowledge", 1))
             gs.ability.reasoning_level = int(ab.get("reasoning_level", 1))
+            # 恢复存档时同样以个人资料为准，避免读到旧存档里过期的 Lv
+            try:
+                gs.ability.reasoning_level = max(1, int(load_profile().get("level", gs.ability.reasoning_level)))
+            except Exception:
+                pass
 
             gs.total_turns = int(data.get("total_turns", 10))
             gs.remaining_turns = int(data.get("remaining_turns", 10))
@@ -1064,7 +1151,7 @@ class GameController:
             ])
             mystery_block = "\n".join(f"{i}. {m}" for i, m in enumerate(mysteries, 1))
 
-            prompt = f"""游戏已结束，玩家推理失败。现在进入「谜团揭秘」环节：请基于【完整真相】逐一解答下面的每一个待解谜团。
+            prompt = f"""案件已结案。现在进入「谜团揭秘」环节：请基于【完整真相】逐一解答下面的每一个待解谜团。
 
 【完整真相】
 {truth_block}
@@ -1113,8 +1200,11 @@ class GameController:
                 results.append((mysteries[idx], parts[0]))
         return results
 
-    def _record_profile_result(self, solved: bool) -> str:
-        """结算到个人资料（成功升级/失败降级），返回等级变化提示文案"""
+    def _record_profile_result(self, solved: bool, level_gain: int = 1) -> str:
+        """结算到个人资料（成功升级/失败降级），返回等级变化提示文案
+
+        level_gain: 成功时的升级级数（>60 还原度 = 1 级，>80 优秀 = 2 级）
+        """
         try:
             outcome = record_game_result(
                 solved=solved,
@@ -1122,7 +1212,8 @@ class GameController:
                 identity=self.game_state.user_identity,
                 mode=self.game_state.mode.value,
                 progress=self.game_state.reasoning_progress,
-                turns_used=self.game_state.total_turns - self.game_state.remaining_turns
+                turns_used=self.game_state.total_turns - self.game_state.remaining_turns,
+                level_gain=level_gain
             )
             return outcome["note"]
         except Exception as e:
