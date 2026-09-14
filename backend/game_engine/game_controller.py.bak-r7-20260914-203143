@@ -1,0 +1,1281 @@
+"""游戏流程控制器 - 整合所有模块的核心协调者"""
+from typing import Dict, List, Optional, Tuple, Callable
+from models.game_state import (
+    GameState, GameMode, InquiryType, InquiryRecord,
+    ReasoningBonus, CaseInfo, Clue
+)
+from ai_host.host_persona import HostPersona
+from ai_host.reasoning_engine import ReasoningEngine
+from ai_host.llm_client import LLMError
+from game_engine.case_generator import CaseGenerator
+from player_profile import record_game_result, load_profile
+from learning.learning_system import (
+    KnowledgeExtractor, ExerciseGenerator, ExerciseGrader,
+    Exercise, LearningMaterial, ExerciseDifficulty
+)
+import uuid
+import time
+import json
+import os
+import re
+import random
+
+# 存档文件路径（单槽位：最新一局）
+SAVE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "game_save.json")
+
+
+def _to_float(value, default: float = 0.0) -> float:
+    """安全转float - LLM返回的JSON数值可能是字符串或None"""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+class GameController:
+    """
+    游戏流程控制器
+
+    核心职责：
+    1. 管理完整的游戏生命周期
+    2. 协调AI主持人、推理引擎、学习系统
+    3. 处理玩家的所有交互
+    4. 更新游戏状态
+    5. 触发各种游戏事件
+    """
+
+    def __init__(self, llm_client):
+        self.llm = llm_client
+
+        # 初始化各个子系统
+        self.host = HostPersona()
+        self.reasoning_engine = ReasoningEngine(llm_client)
+        self.case_generator = CaseGenerator(llm_client)
+        self.knowledge_extractor = KnowledgeExtractor(llm_client)
+        self.exercise_generator = ExerciseGenerator(llm_client)
+        self.exercise_grader = ExerciseGrader(llm_client)
+
+        # 当前游戏状态
+        self.game_state: Optional[GameState] = None
+        self.current_exercise: Optional[Exercise] = None
+        self.learning_material: Optional[LearningMaterial] = None
+
+    async def start_new_game(
+        self,
+        identity: str = "",
+        mode: GameMode = GameMode.ENTERTAINMENT,
+        learning_content: Optional[str] = None,
+        subject: Optional[str] = None,
+        premise: Optional[str] = None,
+        on_status: Optional[Callable[[str], None]] = None
+    ) -> Dict:
+        """
+        开始新游戏
+
+        premise: 一句话开局（如"小明昨晚失踪了。我是他的老师"），
+                 优先级最高；两层架构生成：真相层(事件)+视角层(身份)
+        on_status: 异步回调，接收生成进度文本（用于流式推送）
+
+        返回：游戏初始化信息
+        """
+
+        async def _status(text: str):
+            if on_status:
+                try:
+                    await on_status(text)
+                except Exception:
+                    pass
+
+        # 创建游戏状态
+        self.game_state = GameState(
+            mode=mode,
+            user_identity=(identity or "").strip()
+        )
+
+        # 同步个人资料等级到游戏内「推理等级」顶栏展示
+        # （self.game_state.ability.reasoning_level 默认是 1，若不从
+        #   player_profile.json 读回，游戏页永远显示 Lv.1，与首页的 Lv.N 不一致）
+        try:
+            self.game_state.ability.reasoning_level = max(1, int(load_profile().get("level", 1)))
+        except Exception:
+            pass
+
+        # 学习模式：处理学习材料（无论是否一句话开局，学习内容都要生效）
+        if mode == GameMode.LEARNING and learning_content:
+            await self._setup_learning_mode(learning_content, subject)
+
+        # 一句话模式：两层生成（真相层缓存命中时秒出同一案件）
+        if premise:
+            case, extracted_identity = await self.case_generator.generate_case_from_premise(
+                premise, on_status=on_status
+            )
+            if not self.game_state.user_identity:
+                self.game_state.user_identity = extracted_identity
+            self.game_state.case = case
+        else:
+            await _status("🎭 正在生成案件...")
+            # 生成案件
+            case = await self._generate_case_for_game()
+            self.game_state.case = case
+
+        # 装载身份专属行动（视角层产物）
+        self.game_state.identity_actions = [
+            {"id": str(uuid.uuid4()), "name": a["name"], "desc": a.get("desc", ""), "result": a["result"], "used": False}
+            for a in (case.identity_actions or [])
+        ]
+
+        # 生成欢迎信息
+        welcome_message = self.host.greet_player(self.game_state.user_identity, mode.value)
+        case_presentation = self.host.present_case(
+            case.title,
+            case.background,
+            case.scene_description
+        )
+
+        # 对话流水：欢迎 + 案件呈递（用于持久化恢复重建聊天）
+        self._append_log("ai", welcome_message)
+        self._append_log("ai", case_presentation)
+
+        # 存档到磁盘
+        self._save_to_disk()
+
+        return {
+            "game_id": self.game_state.game_id,
+            "welcome_message": welcome_message,
+            "case_presentation": case_presentation,
+            "user_identity": self.game_state.user_identity,
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _setup_learning_mode(
+        self,
+        learning_content: str,
+        subject: Optional[str]
+    ):
+        """设置学习模式"""
+
+        # 提取知识点
+        self.learning_material = await self.knowledge_extractor.extract_knowledge_points(
+            learning_content,
+            subject or ""
+        )
+
+        # 初始化学习进度
+        from models.game_state import LearningProgress
+        self.game_state.learning = LearningProgress(
+            material_id=self.learning_material.material_id,
+            knowledge_points=self.learning_material.knowledge_points
+        )
+
+    async def _generate_case_for_game(self) -> CaseInfo:
+        """为当前游戏生成案件"""
+
+        if self.game_state.mode == GameMode.ENTERTAINMENT:
+            return await self.case_generator.generate_case(
+                self.game_state.user_identity,
+                mode="entertainment"
+            )
+        else:
+            # 学习模式：案件关联学习内容
+            learning_context = {
+                "subject": self.learning_material.subject,
+                "knowledge_points": self.learning_material.knowledge_points
+            }
+            return await self.case_generator.generate_case(
+                self.game_state.user_identity,
+                mode="learning",
+                learning_context=learning_context
+            )
+
+    async def handle_player_action(
+        self,
+        action_type: str,
+        content: str
+    ) -> Dict:
+        """
+        处理玩家行动
+
+        action_type: 'question', 'hypothesis', 'verification', 'hint', 'learning'
+        content: 玩家输入的内容
+
+        返回：AI响应和状态更新
+        """
+
+        if not self.game_state or self.game_state.game_over:
+            return {"error": "游戏未开始或已结束"}
+
+        # 次数用尽不再直接结束游戏：耗次数的行动先拦截，引导去学习挑战赚机会
+        if action_type in ("question", "hypothesis", "ask_person", "hint") \
+                and self.game_state.remaining_turns <= 0:
+            return {"error": self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )}
+
+        if action_type == "question":
+            return await self._handle_question(content)
+        elif action_type == "ask_person":
+            return await self._handle_ask_person(content)
+        elif action_type == "hypothesis":
+            return await self._handle_hypothesis(content)
+        elif action_type == "verification":
+            return await self._handle_verification(content)
+        elif action_type == "hint":
+            return await self._handle_hint_request()
+        elif action_type == "learning":
+            return await self._handle_learning_request()
+        elif action_type == "identity_action":
+            return await self._handle_identity_action(content)
+        else:
+            return {"error": "未知的行动类型"}
+
+    # ==================== 流式行动处理（SSE） ====================
+
+    async def handle_player_action_stream(self, action_type: str, content: str):
+        """流式处理玩家行动
+
+        异步生成器，yield 事件 dict：
+          {"type": "delta", "text": "..."}   - 主持人台词增量
+          {"type": "reset"}                  - 重试前清空已推送文本
+          {"type": "final", "data": {...}}   - 完成，data结构与非流式接口一致
+          {"type": "error", "message": "..."} - 失败（不消耗推理机会）
+        """
+        if not self.game_state or self.game_state.game_over:
+            yield {"type": "error", "message": "游戏未开始或已结束"}
+            return
+
+        # 次数用尽不再直接结束游戏：耗次数的行动先拦截，引导去学习挑战赚机会
+        if action_type in ("question", "hypothesis", "ask_person", "hint") \
+                and self.game_state.remaining_turns <= 0:
+            yield {"type": "error", "message": self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )}
+            return
+
+        if action_type == "identity_action":
+            # 无LLM调用，直接出结果
+            result = await self._handle_identity_action(content)
+            if result.get("error"):
+                yield {"type": "error", "message": result["error"]}
+            else:
+                yield {"type": "final", "data": result}
+            return
+
+        if action_type == "hint":
+            gen_factory = lambda: self.reasoning_engine.generate_hint_stream(self.game_state)
+        elif action_type == "ask_person":
+            gen_factory = lambda: self.reasoning_engine.generate_ask_person_stream(self.game_state, content)
+        elif action_type == "question":
+            gen_factory = lambda: self.reasoning_engine.process_inquiry_stream(
+                self.game_state, InquiryType.QUESTION, content
+            )
+        elif action_type == "hypothesis":
+            gen_factory = lambda: self.reasoning_engine.process_inquiry_stream(
+                self.game_state, InquiryType.HYPOTHESIS, content
+            )
+        elif action_type == "verification":
+            gen_factory = lambda: self.reasoning_engine.process_inquiry_stream(
+                self.game_state, InquiryType.VERIFICATION, content
+            )
+        else:
+            yield {"type": "error", "message": "未知的行动类型"}
+            return
+
+        # 最多两次尝试：第一次中途失败时先推 reset 清空已显示文本再重试
+        final_payload = None
+        for attempt in (1, 2):
+            sent_any = False
+            try:
+                async for kind, payload in gen_factory():
+                    if kind == "delta":
+                        sent_any = True
+                        yield {"type": "delta", "text": payload}
+                    else:  # final
+                        final_payload = payload
+                break
+            except LLMError as e:
+                if attempt == 1:
+                    yield {"type": "reset"}
+                    continue
+                yield {"type": "error", "message": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
+                return
+            except Exception as e:
+                yield {"type": "error", "message": f"处理失败：{e}（本次未消耗推理机会）"}
+                return
+
+        if final_payload is None:
+            yield {"type": "error", "message": "AI未返回有效内容（本次未消耗推理机会）"}
+            return
+
+        # 复用非流式的状态更新逻辑
+        if action_type == "question":
+            yield {"type": "final", "data": await self._finalize_question(content, final_payload)}
+        elif action_type == "hypothesis":
+            yield {"type": "final", "data": await self._finalize_hypothesis(content, final_payload)}
+        elif action_type == "ask_person":
+            yield {"type": "final", "data": await self._finalize_ask_person(content, final_payload)}
+        elif action_type == "verification":
+            yield {"type": "final", "data": await self._finalize_verification(content, final_payload)}
+        else:  # hint
+            yield {"type": "final", "data": await self._finalize_hint(final_payload)}
+
+    async def _handle_question(self, question: str) -> Dict:
+        """处理玩家提问"""
+
+        # AI判断和回应（先调用，成功后才消耗推理机会，避免AI故障时白扣次数）
+        try:
+            ai_response, state_updates = await self.reasoning_engine.process_inquiry(
+                self.game_state,
+                InquiryType.QUESTION,
+                question
+            )
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
+
+        return await self._finalize_question(question, (ai_response, state_updates))
+
+    async def _finalize_question(self, question: str, payload) -> Dict:
+        """提问收尾：扣次数、更新进度、记录、存档（流式/非流式共用）"""
+        ai_response, state_updates = payload
+
+        # 消耗一次推理机会
+        self.game_state.use_turn()
+
+        # 对话流水：玩家提问 + AI回应
+        self._append_log("user", question)
+        self._append_log("ai", ai_response)
+
+        # 更新推理进度
+        progress_delta = _to_float(state_updates.get("progress_delta", 0))
+        self.game_state.update_progress(progress_delta)
+
+        # 记录推理历史
+        inquiry_record = InquiryRecord(
+            inquiry_id=str(uuid.uuid4()),
+            inquiry_type=InquiryType.QUESTION,
+            content=question,
+            ai_response=ai_response,
+            timestamp=time.time(),
+            revealed_info=state_updates.get("revealed_info", []),
+            reasoning_progress=progress_delta
+        )
+        self.game_state.inquiry_history.append(inquiry_record)
+
+        # 检查是否揭示了新线索
+        revealed_clue = state_updates.get("revealed_clue")
+        clue_message = ""
+        if revealed_clue:
+            clue_message = self.host.reveal_clue(revealed_clue.content, is_hidden=True)
+            self._append_log("ai", clue_message)
+
+        # 检查是否卡住
+        stuck_hint = ""
+        if self.game_state.is_stuck() and self.game_state.remaining_turns > 2:
+            stuck_hint = self.host.hint_stuck(
+                self.game_state.remaining_turns,
+                self.game_state.mode == GameMode.LEARNING
+            )
+
+        # 次数用尽：不结束游戏，提示可以学习挑战赚机会 / 直接还原真相
+        turns_note = ""
+        if self.game_state.remaining_turns <= 0:
+            turns_note = self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )
+            if clue_message:
+                clue_message += "\n\n" + turns_note
+            else:
+                ai_response += "\n\n" + turns_note
+
+        self._save_to_disk()
+        return {
+            "ai_response": ai_response,
+            "clue_message": clue_message,
+            "stuck_hint": stuck_hint,
+            "progress_delta": progress_delta,
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _handle_hypothesis(self, hypothesis: str) -> Dict:
+        """处理玩家的推理猜想"""
+
+        try:
+            ai_response, state_updates = await self.reasoning_engine.process_inquiry(
+                self.game_state,
+                InquiryType.HYPOTHESIS,
+                hypothesis
+            )
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
+
+        return await self._finalize_hypothesis(hypothesis, (ai_response, state_updates))
+
+    async def _finalize_hypothesis(self, hypothesis: str, payload) -> Dict:
+        """猜想收尾：扣次数、更新进度、记录、存档（流式/非流式共用）"""
+        ai_response, state_updates = payload
+
+        self.game_state.use_turn()
+
+        self._append_log("user", hypothesis)
+        self._append_log("ai", ai_response)
+
+        # 更新进度
+        progress_delta = _to_float(state_updates.get("progress_delta", 0))
+        self.game_state.update_progress(progress_delta)
+
+        # 记录
+        inquiry_record = InquiryRecord(
+            inquiry_id=str(uuid.uuid4()),
+            inquiry_type=InquiryType.HYPOTHESIS,
+            content=hypothesis,
+            ai_response=ai_response,
+            timestamp=time.time(),
+            reasoning_progress=progress_delta
+        )
+        self.game_state.inquiry_history.append(inquiry_record)
+
+        self._save_to_disk()
+
+        return {
+            "ai_response": ai_response,
+            "correctness": state_updates.get("correctness", 0),
+            "progress_delta": progress_delta,
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _handle_verification(self, truth_claim: str) -> Dict:
+        """处理真相验证"""
+
+        if self.game_state.verification_chances <= 0:
+            return {
+                "error": "没有验证机会了",
+                "game_state": self._serialize_game_state()
+            }
+
+        # AI验证（先调用，失败不扣验证机会）
+        try:
+            _, state_updates = await self.reasoning_engine.process_inquiry(
+                self.game_state,
+                InquiryType.VERIFICATION,
+                truth_claim
+            )
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用：{e}（本次未消耗验证机会，请稍后重试）"}
+
+        return await self._finalize_verification(truth_claim, state_updates)
+
+    async def _finalize_verification(self, truth_claim: str, payload) -> Dict:
+        """验证收尾：扣验证机会、结算、记录、存档（流式/非流式共用）
+
+        payload 兼容两种形态：
+        - 流式：("final", (ai_response, state_updates)) 解包出的 (ai_response, state_updates) 元组
+        - 非流式：直接传入的 state_updates 字典
+        """
+        if isinstance(payload, tuple):
+            _, state_updates = payload
+        else:
+            state_updates = payload
+        state_updates = state_updates or {}
+
+        self.game_state.verification_chances -= 1
+
+        self._append_log("user", truth_claim)
+
+        verification_result = state_updates.get("verification_result", {})
+        is_correct = verification_result.get("is_correct", False)
+
+        if is_correct:
+            # 破案成功（还原度>60 升1级；>80 优秀升2级）
+            self.game_state.case_solved = True
+            self.game_state.game_over = True
+
+            is_excellent = bool(verification_result.get("is_excellent", False)) \
+                or _to_float(verification_result.get("completeness", 0)) > 80
+            level_gain = 2 if is_excellent else 1
+            completeness = _to_float(verification_result.get("completeness", 0))
+
+            # 待解谜团逐一揭秘 + 完整真相（让玩家看到全部剧情）
+            mysteries = list(getattr(self.game_state.case, "mysteries", []) or [])
+            mysteries_resolved: List[Tuple[str, str]] = []
+            mysteries_pending: List[str] = []
+            if mysteries:
+                resolved = await self._resolve_mysteries(mysteries)
+                answered_set = {m for m, _ in resolved}
+                mysteries_resolved = resolved
+                mysteries_pending = [m for m in mysteries if m not in answered_set]
+
+            success_message = self.host.case_solved(
+                reasoning_path=verification_result.get("reasoning_path_summary", []),
+                key_insights=verification_result.get("key_insights", []),
+                turns_used=self.game_state.total_turns - self.game_state.remaining_turns,
+                total_turns=self.game_state.total_turns,
+                truth=self._format_truth_for_display(),
+                completeness=completeness,
+                is_excellent=is_excellent,
+                mysteries_resolved=mysteries_resolved,
+                mysteries_pending=mysteries_pending
+            )
+
+            # 结算个人资料：成功升级（普通+1 / 优秀+2）
+            level_note = self._record_profile_result(solved=True, level_gain=level_gain)
+            if level_note:
+                success_message += "\n\n" + level_note
+
+            self._append_log("ai", success_message)
+            self._save_to_disk()
+
+            return {
+                "success": True,
+                "message": success_message,
+                "game_over": True,
+                "case_solved": True,
+                "game_state": self._serialize_game_state()
+            }
+        else:
+            # 验证失败：带还原度评分反馈（说对了多少、错在哪、漏了什么）
+            failure_message = self.host.verification_incorrect(
+                truth_claim,
+                verification_result.get("errors", []),
+                self.game_state.verification_chances,
+                verification_result=verification_result
+            )
+
+            self._append_log("ai", failure_message)
+
+            # 如果没有验证机会且推理次数也用完了
+            if self.game_state.verification_chances <= 0 and self.game_state.remaining_turns <= 0:
+                self.game_state.game_over = True
+                game_over_message = await self._generate_game_over_message()
+                level_note = self._record_profile_result(solved=False)
+                if level_note:
+                    game_over_message += "\n\n" + level_note
+                self._append_log("ai", game_over_message)
+                self._save_to_disk()
+
+                return {
+                    "success": False,
+                    "message": failure_message + "\n\n" + game_over_message,
+                    "game_over": True,
+                    "game_state": self._serialize_game_state()
+                }
+
+            self._save_to_disk()
+            return {
+                "success": False,
+                "message": failure_message,
+                "errors": [],
+                "game_state": self._serialize_game_state()
+            }
+
+    async def _handle_hint_request(self) -> Dict:
+        """处理提示请求"""
+
+        # 消耗一次推理机会获取提示
+        if self.game_state.remaining_turns <= 0:
+            return {"error": "没有推理机会了"}
+
+        try:
+            hint = await self.reasoning_engine.generate_hint(
+                self.game_state,
+                hint_type="normal"
+            )
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
+
+        return await self._finalize_hint(hint)
+
+    async def _finalize_hint(self, hint: str) -> Dict:
+        """提示收尾：扣次数、记录、存档（流式/非流式共用）"""
+        # 生成成功后才消耗推理机会
+        self.game_state.use_turn()
+
+        self._append_log("user", "🔍 请求提示")
+        self._append_log("ai", f"💡 提示：{hint}")
+        self._save_to_disk()
+
+        return {
+            "hint": hint,
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _handle_ask_person(self, content: str) -> Dict:
+        """非流式「询问他人」：找人打听线索（消耗1次推理机会）"""
+        if not (content or "").strip():
+            return {"error": "请写下想询问的人和问题，例如：问保安 你昨晚看到了什么"}
+
+        answer_parts = []
+        try:
+            async for kind, payload in self.reasoning_engine.generate_ask_person_stream(self.game_state, content):
+                if kind == "final":
+                    answer_parts.append(payload)
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
+
+        if not answer_parts:
+            return {"error": "AI未返回有效内容（本次未消耗推理机会）"}
+
+        return await self._finalize_ask_person(content, answer_parts[-1])
+
+    async def _finalize_ask_person(self, question: str, answer: str) -> Dict:
+        """「询问他人」收尾：扣次数、情报入库、记录、存档（流式/非流式共用）"""
+        # 生成成功后才消耗推理机会
+        self.game_state.use_turn()
+
+        # 打听到的情报固化为一条已揭示线索
+        clue = Clue(
+            clue_id=str(uuid.uuid4()),
+            content=answer,
+            revealed=True,
+            critical=False,
+            perspective="来自询问他人"
+        )
+        self.game_state.case.revealed_clues.append(clue)
+
+        self._append_log("user", f"🗣 询问他人：{question}")
+        self._append_log("ai", answer)
+
+        # 记录推理历史
+        inquiry_record = InquiryRecord(
+            inquiry_id=str(uuid.uuid4()),
+            inquiry_type=InquiryType.HINT,
+            content=f"询问他人：{question}",
+            ai_response=answer,
+            timestamp=time.time()
+        )
+        self.game_state.inquiry_history.append(inquiry_record)
+
+        # 问完耗尽最后机会：不结束游戏，提示可以学习挑战赚机会 / 直接还原真相
+        if self.game_state.remaining_turns <= 0:
+            turns_note = self.host.turns_exhausted_note(
+                has_learning=self.game_state.mode == GameMode.LEARNING
+            )
+            answer = answer + "\n\n" + turns_note
+
+        self._save_to_disk()
+
+        return {
+            "ai_response": answer,
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _handle_identity_action(self, content: str) -> Dict:
+        """处理身份专属行动（无LLM调用，结果在开局时已由视角层生成，即时返回）"""
+
+        action_name = (content or "").strip()
+        action = next(
+            (a for a in self.game_state.identity_actions
+             if not a.get("used") and (a["name"] == action_name or a.get("id") == action_name)),
+            None
+        )
+
+        if not action:
+            return {"error": "行动不存在或已使用"}
+
+        # 执行：标记已用（身份行动免费，不消耗推理机会）
+        action["used"] = True
+
+        # 行动情报固化为一条已揭示线索
+        clue = Clue(
+            clue_id=str(uuid.uuid4()),
+            content=action["result"],
+            revealed=True,
+            critical=False,
+            perspective=f"侦探身份线索「{action['name']}」"
+        )
+        self.game_state.case.revealed_clues.append(clue)
+
+        message = self.host.identity_action_result(
+            action["name"], action["result"]
+        )
+
+        self._append_log("user", f"🎭 身份行动：{action['name']}")
+        self._append_log("ai", message)
+
+        self._save_to_disk()
+        return {
+            "ai_response": message,
+            "action_name": action["name"],
+            "game_state": self._serialize_game_state()
+        }
+
+    async def _handle_learning_request(self) -> Dict:
+        """处理学习挑战请求"""
+
+        if self.game_state.mode != GameMode.LEARNING:
+            return {"error": "当前模式不支持学习挑战"}
+
+        lp = self.game_state.learning
+
+        # 兜底：刷新/重启后材料丢失时，先用存档里的知识点重建可用材料（旧存档无原文，出题退化为仅凭知识点）
+        if not self.learning_material:
+            if lp and lp.knowledge_points:
+                self.learning_material = LearningMaterial(
+                    material_id=lp.material_id or "restored",
+                    title="学习材料（恢复）",
+                    content="",
+                    subject="",
+                    knowledge_points=lp.knowledge_points
+                )
+            else:
+                return {"error": "没有学习材料，请重新开始学习模式并上传材料"}
+
+        if not lp:
+            from models.game_state import LearningProgress
+            lp = LearningProgress(
+                material_id=self.learning_material.material_id,
+                knowledge_points=self.learning_material.knowledge_points
+            )
+            self.game_state.learning = lp
+
+        # 轮转序号 = 已生成挑战数：让每次挑战的题型和知识点都轮转变化
+        rotate_index = int(getattr(lp, "exercises_generated", 0) or 0)
+        asked = list(getattr(lp, "asked_questions", []) or [])
+
+        # 生成习题（带已出题目避重）
+        exercises = await self.exercise_generator.generate_exercises(
+            self.learning_material,
+            count=1,
+            difficulty=ExerciseDifficulty.MEDIUM,
+            rotate_index=rotate_index,
+            avoid_questions=asked[-10:]
+        )
+
+        if not exercises:
+            return {"error": "习题生成失败"}
+
+        self.current_exercise = exercises[0]
+
+        # 记录已出题目（随存档持久化，跨重启也不重复）
+        asked.append(self.current_exercise.question)
+        lp.asked_questions = asked[-20:]
+        lp.exercises_generated = rotate_index + 1
+
+        # 生成学习挑战介绍
+        intro = self.host.learning_challenge_intro(
+            self.current_exercise.knowledge_point
+        )
+
+        self._save_to_disk()
+
+        return {
+            "intro": intro,
+            "exercise": self._serialize_exercise(self.current_exercise),
+            "game_state": self._serialize_game_state()
+        }
+
+    async def submit_exercise_answer(self, answer: str) -> Dict:
+        """提交习题答案"""
+
+        if not self.current_exercise:
+            return {"error": "没有进行中的习题"}
+
+        # 评分
+        try:
+            grading_result = await self.exercise_grader.grade_exercise(
+                self.current_exercise,
+                answer
+            )
+        except LLMError as e:
+            return {"error": f"AI 服务暂时不可用，评分失败：{e}（可重新提交）"}
+
+        is_correct = grading_result.get("is_correct", False)
+
+        if is_correct:
+            # 答对了，随机发放一种增益
+            reward = await self._grant_learning_reward()
+
+            success_message = self.host.learning_success(
+                reward.get("reward_type", ""),
+                reward["description"]
+            )
+
+            # 隐藏线索奖励：把线索全文直接发给玩家（只说「×1」玩家感知不到线索已入手）
+            if reward.get("revealed_clue"):
+                success_message += "\n\n" + self.host.reveal_clue(
+                    reward["revealed_clue"], is_hidden=True
+                )
+
+            # 更新学习进度
+            if self.game_state.learning:
+                self.game_state.learning.exercises_completed += 1
+                self.game_state.learning.exercises_correct += 1
+
+            self._append_log("user", answer)
+            self._append_log("ai", success_message)
+            self.current_exercise = None
+            self._save_to_disk()
+
+            return {
+                "success": True,
+                "message": success_message,
+                "reward": reward,
+                "feedback": grading_result.get("feedback", ""),
+                "game_state": self._serialize_game_state()
+            }
+        else:
+            # 答错了
+            failure_message = self.host.learning_failure(
+                grading_result.get("correct_answer", ""),
+                grading_result.get("feedback", "")
+            )
+
+            # 更新学习进度
+            if self.game_state.learning:
+                self.game_state.learning.exercises_completed += 1
+
+            self._append_log("user", answer)
+            self._append_log("ai", failure_message)
+            self.current_exercise = None
+            self._save_to_disk()
+
+            return {
+                "success": False,
+                "message": failure_message,
+                "feedback": grading_result.get("feedback", ""),
+                "correct_answer": grading_result.get("correct_answer", ""),
+                "game_state": self._serialize_game_state()
+            }
+
+    async def _grant_learning_reward(self, reward_type: str = "") -> Dict:
+        """发放学习奖励（答对后随机抽取一种增益）"""
+
+        reward_configs = {
+            "insight": {
+                "description": "🔍 洞察 +1\n本次提问获得额外信息",
+                "ability": "observation",
+                "action": "ability_boost"
+            },
+            "logic": {
+                "description": "🧩 逻辑 +1\n推理判断更加准确",
+                "ability": "logic",
+                "action": "ability_boost"
+            },
+            "knowledge": {
+                "description": "📖 知识 +1\n获得案件相关知识提示",
+                "ability": "knowledge",
+                "action": "ability_boost"
+            },
+            "association": {
+                "description": "🔗 联想 +1\n更容易发现线索间的关联",
+                "ability": "association",
+                "action": "ability_boost"
+            },
+            "extra_turn": {
+                "description": "⏳ 推理机会 +1\n增加一次提问机会",
+                "action": "extra_turn"
+            },
+            "hidden_clue": {
+                "description": "🎁 隐藏线索 ×1\n解锁一条关键线索",
+                "action": "reveal_clue"
+            }
+        }
+
+        # 增益随机：答对后从奖励池中随机抽取（不再沿用习题预设的 reward_type）
+        # 隐藏线索已解锁完时权重降低，避免总是退化成「额外机会」
+        pool = ["insight", "logic", "knowledge", "association", "extra_turn", "hidden_clue"]
+        has_hidden = any(not c.revealed for c in self.game_state.case.hidden_clues)
+        if not has_hidden:
+            pool = ["insight", "logic", "knowledge", "association", "extra_turn", "extra_turn"]
+        picked_type = random.choice(pool)
+
+        config = dict(reward_configs.get(picked_type, reward_configs["extra_turn"]))
+        reward_type = picked_type
+
+        if config["action"] == "ability_boost":
+            self.game_state.ability.gain(config["ability"], 1)
+        elif config["action"] == "extra_turn":
+            self.game_state.add_bonus_turn()
+        elif config["action"] == "reveal_clue":
+            # 揭示一条隐藏线索（随机选一条未解锁的）；若已无隐藏线索则退化为额外推理机会
+            unrevealed = [c for c in self.game_state.case.hidden_clues if not c.revealed]
+            if unrevealed:
+                clue = random.choice(unrevealed)
+                self.game_state.reveal_clue(clue)
+                config["revealed_clue"] = clue.content
+            else:
+                reward_type = "extra_turn"
+                config = {
+                    "description": "⏳ 推理机会 +1\n（隐藏线索已全部解锁，奖励转换为额外推理机会）",
+                    "action": "extra_turn"
+                }
+                self.game_state.add_bonus_turn()
+
+        # 创建增益对象
+        bonus = ReasoningBonus(
+            bonus_type=reward_type,
+            description=config["description"]
+        )
+        self.game_state.active_bonuses.append(bonus)
+
+        config["reward_type"] = reward_type
+        return config
+
+    # ==================== 对话日志 / 磁盘持久化 ====================
+
+    def _append_log(self, role: str, content: str):
+        """追加对话流水（用于重启后重建聊天界面），上限200条"""
+        if not self.game_state or not content:
+            return
+        self.game_state.inquiry_log.append({
+            "role": role, "content": content, "ts": time.time()
+        })
+        if len(self.game_state.inquiry_log) > 200:
+            self.game_state.inquiry_log = self.game_state.inquiry_log[-200:]
+
+    def _save_to_disk(self):
+        """存档当前游戏状态到磁盘（单槽位：最新一局）"""
+        if not self.game_state or not self.game_state.case:
+            return
+        try:
+            gs = self.game_state
+            data = {
+                "game_id": gs.game_id,
+                "mode": gs.mode.value,
+                "user_identity": gs.user_identity,
+                "case": {
+                    "title": gs.case.title,
+                    "background": gs.case.background,
+                    "victim_info": gs.case.victim_info,
+                    "scene_description": gs.case.scene_description,
+                    "truth": gs.case.truth,
+                    "mysteries": gs.case.mysteries,
+                    "askable_people": getattr(gs.case, "askable_people", []) or [],
+                    "revealed_clues": [
+                        {"content": c.content, "critical": c.critical, "perspective": getattr(c, "perspective", "")}
+                        for c in gs.case.revealed_clues
+                    ],
+                    "hidden_clues": [
+                        {"content": c.content, "critical": c.critical,
+                         "perspective": getattr(c, "perspective", ""),
+                         "trigger": getattr(c, "trigger", "")}
+                        for c in gs.case.hidden_clues
+                    ]
+                },
+                "ability": {
+                    "observation": gs.ability.observation,
+                    "logic": gs.ability.logic,
+                    "association": gs.ability.association,
+                    "knowledge": gs.ability.knowledge,
+                    "reasoning_level": gs.ability.reasoning_level
+                },
+                "total_turns": gs.total_turns,
+                "remaining_turns": gs.remaining_turns,
+                "verification_chances": gs.verification_chances,
+                "reasoning_progress": gs.reasoning_progress,
+                "stuck_count": gs.stuck_count,
+                "confirmed_info": gs.confirmed_info,
+                "active_bonuses": [
+                    {"bonus_type": b.bonus_type, "description": b.description, "used": b.used}
+                    for b in gs.active_bonuses
+                ],
+                "identity_actions": [
+                    {"id": a.get("id", ""), "name": a["name"], "desc": a.get("desc", ""),
+                     "result": a["result"], "used": a.get("used", False)}
+                    for a in gs.identity_actions
+                ],
+                "inquiry_log": gs.inquiry_log,
+                "game_over": gs.game_over,
+                "case_solved": gs.case_solved,
+                "learning": None
+            }
+            if gs.learning:
+                lm = self.learning_material
+                data["learning"] = {
+                    "material_id": gs.learning.material_id,
+                    "knowledge_points": gs.learning.knowledge_points,
+                    "exercises_completed": gs.learning.exercises_completed,
+                    "exercises_correct": gs.learning.exercises_correct,
+                    "exercises_generated": int(getattr(gs.learning, "exercises_generated", 0) or 0),
+                    "asked_questions": (getattr(gs.learning, "asked_questions", []) or [])[-20:],
+                    # 保存材料原文：重启/刷新后恢复学习挑战能力（截断防存档膨胀）
+                    "material_title": (getattr(lm, "title", "") or "") if lm else "",
+                    "material_subject": (getattr(lm, "subject", "") or "") if lm else "",
+                    "material_content": (getattr(lm, "content", "") or "")[:8000] if lm else ""
+                }
+
+            os.makedirs(os.path.dirname(SAVE_PATH), exist_ok=True)
+            tmp_path = SAVE_PATH + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            os.replace(tmp_path, SAVE_PATH)
+        except Exception as e:
+            print(f"[存档] 保存失败（不影响游戏进行）: {e}")
+
+    @classmethod
+    def from_save(cls, data: Dict, llm_client) -> Optional["GameController"]:
+        """从存档dict恢复控制器（失败返回None）"""
+        try:
+            controller = cls(llm_client)
+            gs = GameState(
+                game_id=data["game_id"],
+                mode=GameMode.LEARNING if data.get("mode") == "learning" else GameMode.ENTERTAINMENT,
+                user_identity=data.get("user_identity", "")
+            )
+
+            case_data = data["case"]
+            case = CaseInfo(
+                case_id=str(uuid.uuid4()),
+                title=case_data.get("title", ""),
+                background=case_data.get("background", ""),
+                victim_info=case_data.get("victim_info", ""),
+                scene_description=case_data.get("scene_description", ""),
+                truth=case_data.get("truth") or {},
+                mysteries=case_data.get("mysteries") or [],
+                askable_people=list(case_data.get("askable_people") or [])
+            )
+            for c in case_data.get("revealed_clues") or []:
+                case.revealed_clues.append(Clue(
+                    clue_id=str(uuid.uuid4()), content=c["content"], revealed=True,
+                    critical=bool(c.get("critical", False)), perspective=str(c.get("perspective") or "")
+                ))
+            for c in case_data.get("hidden_clues") or []:
+                clue = Clue(
+                    clue_id=str(uuid.uuid4()), content=c["content"], revealed=False,
+                    critical=bool(c.get("critical", False)), perspective=str(c.get("perspective") or "")
+                )
+                clue.trigger = c.get("trigger", "")
+                case.hidden_clues.append(clue)
+            gs.case = case
+
+            ab = data.get("ability") or {}
+            gs.ability.observation = int(ab.get("observation", 1))
+            gs.ability.logic = int(ab.get("logic", 1))
+            gs.ability.association = int(ab.get("association", 1))
+            gs.ability.knowledge = int(ab.get("knowledge", 1))
+            gs.ability.reasoning_level = int(ab.get("reasoning_level", 1))
+            # 恢复存档时同样以个人资料为准，避免读到旧存档里过期的 Lv
+            try:
+                gs.ability.reasoning_level = max(1, int(load_profile().get("level", gs.ability.reasoning_level)))
+            except Exception:
+                pass
+
+            gs.total_turns = int(data.get("total_turns", 10))
+            gs.remaining_turns = int(data.get("remaining_turns", 10))
+            gs.verification_chances = int(data.get("verification_chances", 1))
+            gs.reasoning_progress = _to_float(data.get("reasoning_progress", 0))
+            gs.stuck_count = int(data.get("stuck_count", 0))
+            gs.confirmed_info = data.get("confirmed_info") or []
+            gs.game_over = bool(data.get("game_over", False))
+            gs.case_solved = bool(data.get("case_solved", False))
+
+            for b in data.get("active_bonuses") or []:
+                gs.active_bonuses.append(ReasoningBonus(
+                    bonus_type=b.get("bonus_type", "extra_turn"),
+                    description=b.get("description", ""),
+                    used=bool(b.get("used", False))
+                ))
+
+            gs.identity_actions = list(data.get("identity_actions") or [])
+            gs.inquiry_log = list(data.get("inquiry_log") or [])
+
+            if data.get("learning"):
+                from models.game_state import LearningProgress
+                lp = data["learning"]
+                gs.learning = LearningProgress(
+                    material_id=lp.get("material_id", ""),
+                    knowledge_points=lp.get("knowledge_points") or [],
+                    exercises_completed=int(lp.get("exercises_completed", 0)),
+                    exercises_correct=int(lp.get("exercises_correct", 0)),
+                    exercises_generated=int(lp.get("exercises_generated", 0)),
+                    asked_questions=list(lp.get("asked_questions") or [])[-20:]
+                )
+                # 恢复学习材料（含原文）：保证重启/刷新后学习挑战不再报「没有学习材料」
+                if gs.mode == GameMode.LEARNING:
+                    controller.learning_material = LearningMaterial(
+                        material_id=gs.learning.material_id or "restored",
+                        title=lp.get("material_title") or "学习材料（恢复）",
+                        content=lp.get("material_content") or "",
+                        subject=lp.get("material_subject") or "",
+                        knowledge_points=gs.learning.knowledge_points
+                    )
+
+            controller.game_state = gs
+            return controller
+        except Exception as e:
+            print(f"[存档] 恢复失败: {e}")
+            return None
+
+    async def _generate_game_over_message(self) -> str:
+        """生成游戏结束信息（真相 + 待解谜团逐一揭秘 + 错过的关键点）"""
+
+        truth = self._format_truth_for_display()
+
+        # 分析玩家错过了什么
+        what_missed = []
+        for clue in self.game_state.case.hidden_clues:
+            if not clue.revealed and clue.critical:
+                what_missed.append(f"关键线索：{clue.content}")
+
+        # 待解谜团 → AI 基于真相逐一揭秘（失败则降级为仅列谜团）
+        mysteries = list(getattr(self.game_state.case, "mysteries", []) or [])
+        mysteries_resolved: List[Tuple[str, str]] = []
+        mysteries_pending: List[str] = []
+        if mysteries:
+            resolved = await self._resolve_mysteries(mysteries)
+            answered_set = {m for m, _ in resolved}
+            mysteries_resolved = resolved
+            mysteries_pending = [m for m in mysteries if m not in answered_set]
+
+        return self.host.game_over(
+            truth,
+            what_missed,
+            mysteries_resolved=mysteries_resolved,
+            mysteries_pending=mysteries_pending
+        )
+
+    async def _resolve_mysteries(self, mysteries: List[str]) -> List[Tuple[str, str]]:
+        """基于案件真相，让 AI 逐一解答待解谜团（结案揭秘环节）。失败返回空列表。"""
+        try:
+            truth = self.game_state.case.truth
+            truth_block = "\n".join([
+                f"人物：{truth.get('who', '')}",
+                f"事件：{truth.get('what', '')}",
+                f"动机：{truth.get('why', '')}",
+                f"手法：{truth.get('how', '')}",
+                f"反转：{truth.get('twist', '')}",
+            ])
+            mystery_block = "\n".join(f"{i}. {m}" for i, m in enumerate(mysteries, 1))
+
+            prompt = f"""案件已结案。现在进入「谜团揭秘」环节：请基于【完整真相】逐一解答下面的每一个待解谜团。
+
+【完整真相】
+{truth_block}
+
+【待解谜团】
+{mystery_block}
+
+要求：
+1. 每个解答必须完全依据真相（人物/事件/动机/手法/反转），不得编造真相之外的新情节；真相未明说的细节只能做与真相一致的合理解释。
+2. 逐条点破「表面现象」与「实际发生的事」之间的落差，直接回答谜团中的疑问（例如"同时消失"实际发生了什么）。
+3. 每条解答 2~4 句话，语气冷静克制、略带惋惜，符合主持人身份。
+4. 严格按以下格式输出，每行一条，共 {len(mysteries)} 条，不要输出任何其他内容：
+谜团1|谜团简述|解答内容
+谜团2|谜团简述|解答内容"""
+
+            response = await self.llm.generate(
+                prompt,
+                max_tokens=1800,
+                temperature=0.4,
+                system_prompt="你是海龟汤游戏的主持人，正在公布真相并揭秘所有悬而未决的谜团。"
+            )
+            return self._parse_mystery_answers(response, mysteries)
+        except Exception as e:
+            print(f"[结案] 谜团揭秘生成失败，降级为列表展示: {e}")
+            return []
+
+    @staticmethod
+    def _parse_mystery_answers(response: str, mysteries: List[str]) -> List[Tuple[str, str]]:
+        """解析 AI 的谜团解答（格式：谜团N|简述|解答），宽容处理半角/全角分隔符与格式漂移"""
+        results: List[Tuple[str, str]] = []
+        for raw_line in (response or "").splitlines():
+            line = raw_line.strip().replace("｜", "|")
+            if not line:
+                continue
+            if not (re.match(r"^谜团\s*\d+", line) or re.match(r"^\d+\s*[\.、]", line)):
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            idx = len(results)
+            if idx >= len(mysteries):
+                break
+            if len(parts) >= 3:
+                results.append((mysteries[idx], "|".join(parts[2:])))
+            elif len(parts) == 2:
+                results.append((mysteries[idx], parts[1]))
+            else:
+                results.append((mysteries[idx], parts[0]))
+        return results
+
+    def _record_profile_result(self, solved: bool, level_gain: int = 1) -> str:
+        """结算到个人资料（成功升级/失败降级），返回等级变化提示文案
+
+        level_gain: 成功时的升级级数（>60 还原度 = 1 级，>80 优秀 = 2 级）
+        """
+        try:
+            outcome = record_game_result(
+                solved=solved,
+                case_title=self.game_state.case.title if self.game_state.case else "",
+                identity=self.game_state.user_identity,
+                mode=self.game_state.mode.value,
+                progress=self.game_state.reasoning_progress,
+                turns_used=self.game_state.total_turns - self.game_state.remaining_turns,
+                level_gain=level_gain
+            )
+            return outcome["note"]
+        except Exception as e:
+            print(f"[个人资料] 结算失败: {e}")
+            return ""
+
+    def _format_truth_for_display(self) -> str:
+        """格式化真相用于展示"""
+        truth = self.game_state.case.truth
+        return f"""
+{self.game_state.case.title}
+
+{truth.get('what', '')}
+
+凶手/关键人物：{truth.get('who', '')}
+动机：{truth.get('why', '')}
+手法：{truth.get('how', '')}
+
+真相的反转点：
+{truth.get('twist', '')}
+"""
+
+    def _serialize_game_state(self) -> Dict:
+        """序列化游戏状态用于前端显示"""
+
+        if not self.game_state:
+            return {}
+
+        return {
+            "game_id": self.game_state.game_id,
+            "mode": self.game_state.mode.value,
+            "user_identity": self.game_state.user_identity,
+            "case": {
+                "title": self.game_state.case.title,
+                "background": self.game_state.case.background,
+                "victim_info": self.game_state.case.victim_info,
+                "scene_description": self.game_state.case.scene_description,
+                "askable_people": getattr(self.game_state.case, "askable_people", []) or [],
+                "revealed_clues": [
+                    {"content": c.content, "critical": c.critical, "perspective": getattr(c, "perspective", "")}
+                    for c in self.game_state.case.revealed_clues
+                ],
+                "mysteries": self.game_state.case.mysteries
+            },
+            "ability": {
+                "observation": self.game_state.ability.observation,
+                "logic": self.game_state.ability.logic,
+                "association": self.game_state.ability.association,
+                "knowledge": self.game_state.ability.knowledge,
+                "reasoning_level": self.game_state.ability.reasoning_level
+            },
+            "remaining_turns": self.game_state.remaining_turns,
+            "total_turns": self.game_state.total_turns,
+            "verification_chances": self.game_state.verification_chances,
+            "reasoning_progress": self.game_state.reasoning_progress,
+            "confirmed_info": self.game_state.confirmed_info,
+            "identity_actions": [
+                {"id": a.get("id", ""), "name": a["name"], "desc": a.get("desc", ""), "used": a.get("used", False)}
+                for a in self.game_state.identity_actions
+            ],
+            "inquiry_log": self.game_state.inquiry_log,
+            "active_bonuses": [
+                {"type": b.bonus_type, "description": b.description}
+                for b in self.game_state.active_bonuses
+                if not b.used
+            ],
+            "game_over": self.game_state.game_over,
+            "case_solved": self.game_state.case_solved,
+            "is_stuck": self.game_state.is_stuck()
+        }
+
+    def _serialize_exercise(self, exercise: Exercise) -> Dict:
+        """序列化习题"""
+        return {
+            "exercise_id": exercise.exercise_id,
+            "type": exercise.exercise_type.value,
+            "question": exercise.question,
+            "options": exercise.options,
+            "knowledge_point": exercise.knowledge_point,
+            "reward_type": exercise.reward_type
+        }
