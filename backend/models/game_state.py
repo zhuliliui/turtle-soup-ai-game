@@ -154,17 +154,38 @@ class GameState:
         self.total_turns += 1
 
     def reveal_clue(self, clue: Clue):
-        """揭示线索"""
+        """揭示线索（揭示后自动按线索发现进度刷新推理进度）"""
         if self.case:
             clue.revealed = True
             self.case.revealed_clues.append(clue)
             if clue in self.case.hidden_clues:
                 self.case.hidden_clues.remove(clue)
+        self.sync_progress_with_clues()
+
+    def sync_progress_with_clues(self):
+        """推理进度 = 已找到线索数 / 总线索数 × 100%
+
+        用户明确要求：进度反映「找到了多少线索」，而不是提问次数或 LLM 的估值。
+        总线索 = 已揭示 + 仍隐藏，所以每找到一条线索，进度就前进一格。
+        """
+        if not self.case:
+            return self.reasoning_progress
+        total = len(self.case.revealed_clues) + len(self.case.hidden_clues)
+        if total <= 0:
+            return self.reasoning_progress
+        self.reasoning_progress = round(
+            len(self.case.revealed_clues) * 100.0 / total, 1
+        )
+        return self.reasoning_progress
 
     def update_progress(self, progress_delta: float):
-        """更新推理进度"""
+        """刷新推理进度。
+
+        进度**只由已找到的线索数决定**（见 sync_progress_with_clues），
+        不再累加 LLM 给的 progress_delta —— 该值现在仅用于「是否卡住」的判定。
+        """
         old_progress = self.reasoning_progress
-        self.reasoning_progress = min(100.0, self.reasoning_progress + progress_delta)
+        self.sync_progress_with_clues()
 
         if abs(progress_delta) < 5:
             self.stuck_count += 1
