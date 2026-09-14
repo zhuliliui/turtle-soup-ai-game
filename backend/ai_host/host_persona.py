@@ -180,18 +180,22 @@ class HostPersona:
 """
 
     def learning_challenge_intro(self, knowledge_point: str = "") -> str:
-        """引入学习挑战（不展示知识点详情——词条含答案词与同义词，展示即泄露）"""
-        return f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        """学习挑战弹窗不再展示介绍文案（页面精简，由前端删除该区块）"""
+        return ""
 
-📚 推理挑战
-
-你的推理需要更多知识支撑。
-
-完成本次知识挑战，可以获得推理增益。
-
-准备好了吗？
-"""
+    def turns_exhausted_note(self, has_learning: bool = False) -> str:
+        """推理机会用尽提示（不再直接 game over：可赚机会/可直接验证真相）"""
+        if has_learning:
+            return (
+                "⏳ 推理机会已用完！\n"
+                "• 完成「学习挑战」可以赚取额外推理机会\n"
+                "• 或者直接点击「还原真相」验证你的推理"
+            )
+        return (
+            "⏳ 推理机会已用完！\n"
+            "• 可以直接点击「还原真相」验证你的推理\n"
+            "• 或点击「再来一局」开始新案件"
+        )
 
     def learning_success(self, bonus_type: str, bonus_desc: str) -> str:
         """学习成功反馈（bonus_desc自带图标，不再重复添加）"""
@@ -290,13 +294,26 @@ class HostPersona:
         reasoning_path: List[str],
         key_insights: List[str],
         turns_used: int,
-        total_turns: int
+        total_turns: int,
+        truth: str = "",
+        completeness: float = 0.0,
+        is_excellent: bool = False,
+        mysteries_resolved: Optional[List] = None,
+        mysteries_pending: Optional[List[str]] = None,
     ) -> str:
-        """破案成功"""
+        """破案成功：完整揭示全部剧情真相
 
-        efficiency = (total_turns - turns_used) / total_turns * 100
+        truth: 完整真相全文（必给，让玩家看到全部剧情）
+        completeness: 还原度评分（0-100）
+        is_excellent: 是否优秀（>80）
+        mysteries_resolved/pending: 待解谜团的逐条揭秘
+        """
 
-        if efficiency > 70:
+        efficiency = (total_turns - turns_used) / total_turns * 100 if total_turns else 0
+
+        if is_excellent or completeness > 80:
+            rating = "🌟🌟🌟 完美还原"
+        elif efficiency > 70:
             rating = "🌟🌟🌟 完美推理"
         elif efficiency > 40:
             rating = "🌟🌟 优秀推理"
@@ -309,19 +326,34 @@ class HostPersona:
 🎉 案件破解！
 
 {rating}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 你的推理报告
-
+还原度：{completeness:.0f}%
 推理效率：{efficiency:.1f}%
 使用轮次：{turns_used}/{total_turns}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🧠 推理路径：
+📖 全部真相
 
+{truth}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
+
+        # 待解谜团逐一揭秘（让玩家看到完整剧情闭环）
+        resolved = mysteries_resolved or []
+        pending = mysteries_pending or []
+        if resolved:
+            report += "\n🔍 待解谜团 · 逐一揭秘\n\n"
+            for i, (mystery, answer) in enumerate(resolved, 1):
+                report += f"❓ 谜团{i}：{mystery}\n"
+                report += f"💡 解答：{answer}\n\n"
+        if pending:
+            report += "🔍 其余待解谜团（答案可从上方真相推知）\n\n"
+            for mystery in pending:
+                report += f"❓ {mystery}\n"
+            report += "\n"
+
+        report += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🧠 你的推理路径：\n\n"
 
         for i, step in enumerate(reasoning_path, 1):
             report += f"{i}. {step}\n"
