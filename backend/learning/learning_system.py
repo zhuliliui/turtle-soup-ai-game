@@ -194,15 +194,30 @@ class ExerciseGenerator:
 
         exercise = await dispatch()
 
+        # 第一道防线：剥离 LLM 复读到题干里的知识点标注（【…】块 / 知识点N：前缀）
+        if exercise:
+            exercise.question = self._strip_knowledge_label(exercise.question)
+
         # 防泄露兜底：选择/判断题题干若出现答案词或词条卡片特征，重新生成一次
         leak_prone = exercise_type in (ExerciseType.SINGLE_CHOICE, ExerciseType.TRUE_FALSE)
         if exercise and leak_prone and self._question_leaks_answer(exercise):
             print("[出题] 检测到题干泄露答案，重新生成中...")
             exercise = await dispatch(leak_warning=True)
+            if exercise:
+                exercise.question = self._strip_knowledge_label(exercise.question)
             if exercise and self._question_leaks_answer(exercise):
                 print("[出题] 二次生成仍有泄露迹象，放行（避免阻塞游戏）")
 
         return exercise
+
+    @staticmethod
+    def _strip_knowledge_label(q: str) -> str:
+        """剥离 LLM 复读到题干里的知识点标注：【…】块、知识点N：前缀、开头残留连字符"""
+        s = (q or "").strip()
+        s = re.sub(r"【[^】]*】", "", s)  # 正常题干不含【】块
+        s = re.sub(r"^\s*知识点\s*\d*\s*[：:．.、]?\s*", "", s)
+        s = re.sub(r"^\s*[-—–]+\s*", "", s)
+        return s.strip()
 
     def _question_leaks_answer(self, exercise: Exercise) -> bool:
         """检测题干是否泄露答案（词条卡片上屏 / 答案词出现在选择题题干）"""
@@ -210,21 +225,45 @@ class ExerciseGenerator:
         if not q:
             return False
 
-        # 词条卡片特征：释义/搭配/同义词标记直接上屏
-        for marker in ("同义词", "常用搭配", "反义词", "词根词缀", "例句:"):
+        # 词条卡片特征：释义/搭配/同义词/知识点标注直接上屏
+        for marker in ("同义词", "常用搭配", "反义词", "词根词缀", "例句:", "知识点"):
             if marker in q:
                 return True
+        # 【…】知识卡片块（正常题干不该出现）
+        if re.search(r"【[^】]*】", q):
+            return True
         # 词条词性标注模式上屏，如 "demonstrate (v.)"
         if re.search(r"[a-z]{3,}\s*\((?:v|n|adj|adv|vt|vi)\.?\)", q):
             return True
 
-        # 选择题：正确答案文本或知识点中的英文词出现在题干 = 送分
+        # 选择题：正确答案文本或知识点中的英文词出现在题干 = 送分（单复数变体归一后比较）
         if exercise.exercise_type == ExerciseType.SINGLE_CHOICE:
             sensitive = set(re.findall(r"[A-Za-z]{4,}", self._correct_option_text(exercise)))
             sensitive |= set(re.findall(r"[A-Za-z]{4,}", exercise.knowledge_point or ""))
-            return any(w.lower() in q for w in sensitive)
+            sensitive_variants: set = set()
+            for w in sensitive:
+                sensitive_variants |= self._en_word_variants(w)
+            q_words: set = set()
+            for w in re.findall(r"[A-Za-z]{4,}", q):
+                q_words |= self._en_word_variants(w)
+            return bool(sensitive_variants & q_words)
 
         return False
+
+    @staticmethod
+    def _en_word_variants(w: str) -> set:
+        """英文词变体集合：原词 + 常见单复数/所有格还原（perspectives→{perspective,…}）"""
+        w = (w or "").lower()
+        variants = {w}
+        if len(w) > 4:
+            if w.endswith("ies"):
+                variants.add(w[:-3] + "y")
+                variants.add(w[:-3])
+            if w.endswith("es"):
+                variants.add(w[:-2])
+            if w.endswith("s"):
+                variants.add(w[:-1])
+        return variants
 
     @staticmethod
     def _correct_option_text(exercise: Exercise) -> str:
@@ -242,8 +281,10 @@ class ExerciseGenerator:
         return """
 防泄露铁律（必须遵守）：
 - question 只包含题干本身：严禁附加词条说明、知识卡片、中文释义、常用搭配、同义词列表等任何提示文字。
-- 严禁把答案词本身或其变体写进 question——玩家看到即等于送分，属于废题。
+- 严禁在 question 中出现任何知识点标注——包括但不限于【知识点1: …】、知识点1：…、「知识点」字样、【…】方括号块。知识点只是给你确定考查方向的依据，绝不能出现在题目里。
+- 严禁把答案词本身或其变体写进 question（含单复数变体）——玩家看到即等于送分，属于废题。
 - 严禁摘抄/复述/改写学习材料原文的句子：题目必须是你对知识点的全新原创表述，玩家粘贴的资料一个字都不能出现在题目里。
+- 知识点的含义讲解必须放在 explanation（解析）里：玩家答题后通过解析学到该知识点，题目本身保持无提示。
 """
 
     @staticmethod
@@ -287,7 +328,7 @@ class ExerciseGenerator:
 1. 题目要准确、清晰，必须是围绕知识点的全新原创题（不得摘抄学习材料原文）
 2. 4个选项，只有1个正确
 3. 错误选项要有迷惑性，不能明显错误
-4. 提供详细解析
+4. explanation 必须包含知识点讲解：先解释该知识点的含义/用法（题目里不能出现的讲解放这里），再说明为什么选对、其他选项错在哪里
 {self._no_leak_section()}
 返回JSON：
 {{
@@ -334,7 +375,7 @@ class ExerciseGenerator:
 要求：
 1. 陈述要清晰明确，必须是围绕知识点的全新原创表述（不得摘抄学习材料原文）
 2. 不能模棱两可
-3. 提供解析
+3. explanation 必须包含知识点讲解：先解释该知识点的含义/用法（题目里不能出现的讲解放这里），再说明判断依据
 {self._no_leak_section()}
 返回JSON：
 {{
