@@ -18,23 +18,27 @@ class CaseGenerator:
         self,
         identity: str,
         mode: str = "entertainment",
-        learning_context: Optional[Dict] = None
+        learning_context: Optional[Dict] = None,
+        clue_count: int = 3
     ) -> CaseInfo:
-        """生成案件"""
+        """生成案件（clue_count：按玩家等级决定的开局线索数）"""
 
         if mode == "entertainment":
-            return await self._generate_entertainment_case(identity)
+            return await self._generate_entertainment_case(identity, clue_count)
         else:
-            return await self._generate_learning_case(identity, learning_context)
+            return await self._generate_learning_case(identity, learning_context, clue_count)
 
     # ==================== 两层生成架构 ====================
     # 真相层（事件决定，与身份无关）+ 视角层（身份决定线索与专属行动）
     # 同一事件换不同身份开局 = 同一个案子、不同的情报入口
 
-    async def generate_case_from_premise(self, premise: str, on_status=None) -> Tuple[CaseInfo, str]:
+    async def generate_case_from_premise(
+        self, premise: str, on_status=None, clue_count: int = 3
+    ) -> Tuple[CaseInfo, str]:
         """一句话生成海龟汤（两层架构）
 
         on_status: 异步回调，用于向前端推送生成进度（"正在提取身份..."等）
+        clue_count: 按玩家等级决定的开局线索数
 
         返回: (案件信息, 玩家身份)
         """
@@ -75,7 +79,7 @@ class CaseGenerator:
         # 视角层：初始线索/隐藏线索/身份专属行动（事件+身份级缓存）
         await _status(f"👁 正在生成「{final_identity}」视角的线索与行动...")
         try:
-            layer = await self._get_perspective_layer(event, final_identity, truth_core)
+            layer = await self._get_perspective_layer(event, final_identity, truth_core, clue_count)
         except Exception as e:
             print(f"[案件生成] 视角层生成失败: {e}，回退单次生成")
             return await self._generate_case_one_shot(premise)
@@ -142,11 +146,14 @@ class CaseGenerator:
         self._truth_cache[key] = data
         return data
 
-    async def _get_perspective_layer(self, event: str, identity: str, truth_core: Dict) -> Dict:
-        """视角层：初始线索/隐藏线索/身份专属行动，由身份决定。同事件+同身份命中缓存"""
-        key = (event.strip(), identity.strip())
+    async def _get_perspective_layer(
+        self, event: str, identity: str, truth_core: Dict, clue_count: int = 3
+    ) -> Dict:
+        """视角层：初始线索/隐藏线索/身份专属行动，由身份决定。同事件+同身份+同线索数命中缓存"""
+        clue_count = max(1, int(clue_count or 3))
+        key = (event.strip(), identity.strip(), clue_count)
         if key in self._perspective_cache:
-            print(f"[案件生成] 视角层命中缓存: {identity} @ {event[:20]}")
+            print(f"[案件生成] 视角层命中缓存: {identity} @ {event[:20]} (线索{clue_count})")
             return self._perspective_cache[key]
 
         t = truth_core.get("truth") or {}
@@ -165,9 +172,10 @@ class CaseGenerator:
 {truth_brief}
 
 初始线索的核心规则（非常重要）：
+- **必须正好生成 {clue_count} 条初始线索**（这是玩家当前等级对应的开局线索数，多一条少一条都不行）
 - 每条初始线索必须严格从玩家身份的第一人称视角出发，只写"这个身份的人才知道、才能观察到、才能接触到"的信息
 - 换一个身份开局，初始线索集合应当明显不同（视角决定情报），但案件真相不变
-- 每条线索附 perspective 字段，用一句话说明"为什么你这个身份会知道这件事"
+- 每条线索附 perspective 字段，不超过12个字，简短标注情报来源（示例：委托信息、职业观察、现场亲历、邻居闲谈），禁止写成长句
 
 身份专属行动规则：
 - 设计2个只有这个身份才能执行的调查行动（如老师→调阅请假记录；警察→申请技术侦查）
@@ -182,21 +190,23 @@ class CaseGenerator:
 {{
     "scene_intro": "第一人称开场（2句话：你是谁、你与这个事件的关系、你此刻的状态）",
     "revealed_clues": [
-        {{"content": "初始线索（身份视角）", "critical": false, "perspective": "为什么你知道这件事"}}
+        {{"content": "初始线索（身份视角）", "critical": false, "perspective": "来源标注（≤12字，如：委托信息）"}}
     ],
     "hidden_clues": [
-        {{"content": "隐藏线索", "critical": true, "trigger": "触发条件", "perspective": "解锁后如何从这个身份视角理解"}}
+        {{"content": "隐藏线索", "critical": true, "trigger": "触发条件", "perspective": "来源标注（≤12字，如：身份情报）"}}
     ],
     "identity_actions": [
         {{"name": "行动名（不超过8字）", "desc": "行动说明（一句话）", "result": "执行后获得的情报（身份视角，与真相强相关）"}}
     ],
     "askable_people": ["人物称呼1", "人物称呼2"]
 }}
-初始线索2-4条，隐藏线索2-3条。
+初始线索必须正好 {clue_count} 条，隐藏线索2-3条。
 """
         data = await self.llm.generate_json(prompt, max_tokens=2000, temperature=0.7)
         if not data.get("revealed_clues"):
             raise ValueError("视角层缺少初始线索")
+        # 严格对齐到等级要求的线索数（LLM 常不守条数）
+        data["revealed_clues"] = self._fit_clue_count(data.get("revealed_clues"), clue_count)
         self._perspective_cache[key] = data
         return data
 
@@ -259,7 +269,7 @@ class CaseGenerator:
   * 警察身份→现场勘查记录、法医初步结论、监控调阅情况
   * 医生身份→体检异常指标、病房观察细节
   * 家长身份→孩子在家反常举动、家庭财务异动
-- 每条线索附 perspective 字段，用一句话说明"为什么你这个身份会知道这件事"
+- 每条线索附 perspective 字段，不超过12个字，简短标注情报来源（示例：委托信息、职业观察、现场亲历、邻居闲谈），禁止写成长句
 - 同一事件如果换不同身份开局，初始线索的集合应当明显不同（视角决定情报），但案件真相不变
 
 请以JSON格式返回：
@@ -277,11 +287,11 @@ class CaseGenerator:
         "twist": "反转点"
     }},
     "revealed_clues": [
-        {{"content": "初始线索1（以玩家身份视角描述）", "critical": false, "perspective": "为什么你这个身份知道这件事"}},
-        {{"content": "初始线索2（以玩家身份视角描述）", "critical": true, "perspective": "为什么你这个身份知道这件事"}}
+        {{"content": "初始线索1（以玩家身份视角描述）", "critical": false, "perspective": "来源标注（≤12字，如：委托信息）"}},
+        {{"content": "初始线索2（以玩家身份视角描述）", "critical": true, "perspective": "来源标注（≤12字，如：现场亲历）"}}
     ],
     "hidden_clues": [
-        {{"content": "隐藏线索1", "critical": true, "trigger": "触发条件", "perspective": "解锁后如何从这个身份视角理解"}}
+        {{"content": "隐藏线索1", "critical": true, "trigger": "触发条件", "perspective": "来源标注（≤12字，如：身份情报）"}}
     ],
     "mysteries": ["待解谜团1", "待解谜团2"]
 }}
@@ -310,8 +320,42 @@ class CaseGenerator:
 
         return self._build_case_info(case_data), identity
 
-    async def _generate_entertainment_case(self, identity: str) -> CaseInfo:
+    @staticmethod
+    def _fit_clue_count(clues: list, target: int) -> list:
+        """把初始线索数量对齐到 target 条。
+
+        LLM 常不严格遵守条数要求：多了就截断（保留 critical 的），
+        少了就用通用观察补足，保证「等级 → 线索数」的规则稳定生效。
+        """
+        target = max(1, int(target or 3))
+        clues = list(clues or [])
+        # 保证每条线索都有 perspective（身份视角来源），缺失时补默认值
+        for c in clues:
+            if isinstance(c, dict) and not str(c.get("perspective") or "").strip():
+                c["perspective"] = "身份视角"
+        if len(clues) > target:
+            # 截断时优先保留 critical 线索，维持关键信息不丢
+            critical = [c for c in clues if isinstance(c, dict) and c.get("critical")]
+            normal = [c for c in clues if not (isinstance(c, dict) and c.get("critical"))]
+            return (critical + normal)[:target]
+        if len(clues) < target:
+            fillers = [
+                {"content": "现场有一处细节与常理不符", "critical": False, "perspective": "现场观察"},
+                {"content": "某个人的说法前后存在矛盾", "critical": False, "perspective": "走访听闻"},
+                {"content": "遗留物品上能找到一条额外线索", "critical": False, "perspective": "物证检查"},
+                {"content": "时间线上有一段无法解释的空白", "critical": False, "perspective": "时间核对"},
+                {"content": "有人似乎在刻意隐瞒什么", "critical": False, "perspective": "直觉判断"},
+                {"content": "现场的气味/温度有异常", "critical": False, "perspective": "感官细节"},
+            ]
+            i = 0
+            while len(clues) < target:
+                clues.append(dict(fillers[i % len(fillers)]))
+                i += 1
+        return clues
+
+    async def _generate_entertainment_case(self, identity: str, clue_count: int = 3) -> CaseInfo:
         """生成纯娱乐模式案件"""
+        clue_count = max(1, int(clue_count or 3))
 
         prompt = f"""
 你是一个海龟汤案件设计大师。现在要为一位身份是「{identity}」的玩家生成一个定制化的海龟汤案件。
@@ -319,9 +363,10 @@ class CaseGenerator:
 要求：
 1. 案件要符合这个身份的视角和专业背景
 2. 真相要有反转，不能一眼看穿
-3. 需要3-5个关键线索才能推理出真相
+3. **初始线索必须正好 {clue_count} 条**（这是玩家等级对应的开局线索数，多一条少一条都不行）
 4. 有2-3条隐藏线索，只有深入推理才能发现
 5. 案件要有悬疑感，但真相要符合逻辑
+6. 初始线索要从「{identity}」的第一人称视角出发，写这个身份才知道、才能观察到的信息
 
 请以JSON格式返回：
 {{
@@ -337,8 +382,8 @@ class CaseGenerator:
         "twist": "反转点"
     }},
     "revealed_clues": [
-        {{"content": "初始线索1", "critical": false}},
-        {{"content": "初始线索2", "critical": true}}
+        {{"content": "初始线索1（以「{identity}」的第一人称视角描述，写这个身份才知道/才能观察到的信息）", "critical": false, "perspective": "来源标注（≤12字，如：职业观察）"}},
+        {{"content": "初始线索2（同上，身份视角）", "critical": true, "perspective": "来源标注（≤12字，如：现场亲历）"}}
     ],
     "hidden_clues": [
         {{"content": "隐藏线索1", "critical": true, "trigger": "当玩家问到XXX时揭示"}},
@@ -361,27 +406,36 @@ class CaseGenerator:
                 print(f"LLM生成案件失败，使用模板案件。Response: {response[:200]}")
                 case_data = CaseTemplates.get_detective_case()
 
-            # 确保至少有初始线索
+            # 确保至少有初始线索，并对齐到等级要求的条数
             if not case_data.get("revealed_clues") or len(case_data.get("revealed_clues", [])) == 0:
                 print("警告：生成的案件没有初始线索，添加默认线索")
                 case_data["revealed_clues"] = [
                     {"content": "案发现场没有打斗痕迹", "critical": False},
                     {"content": "受害者手中握着重要物品", "critical": True}
                 ]
+            case_data["revealed_clues"] = self._fit_clue_count(
+                case_data.get("revealed_clues"), clue_count
+            )
 
         except (LLMError, Exception) as e:
             print(f"生成案件时发生错误: {str(e)}")
             # 使用模板案件作为fallback
             case_data = CaseTemplates.get_detective_case()
 
+        # 兜底：模板案件也统一对齐到等级要求的线索数
+        case_data["revealed_clues"] = self._fit_clue_count(
+            case_data.get("revealed_clues"), clue_count
+        )
         return self._build_case_info(case_data)
 
     async def _generate_learning_case(
         self,
         identity: str,
-        learning_context: Dict
+        learning_context: Dict,
+        clue_count: int = 3
     ) -> CaseInfo:
         """生成学习模式案件 - 将知识点融入案件"""
+        clue_count = max(1, int(clue_count or 3))
 
         knowledge_points = learning_context.get("knowledge_points", [])
         subject = learning_context.get("subject", "")
@@ -399,6 +453,7 @@ class CaseGenerator:
 3. 但不要做成考试题，要让知识自然地融入推理过程
 4. 案件本身要有悬疑性和推理价值
 5. 玩家在推理过程中会自然地接触和运用这些知识
+6. **初始线索必须正好 {clue_count} 条**（玩家等级对应的开局线索数）
 
 例如：
 - 如果是生物学的"细胞分裂"，可以设计一个关于克隆或遗传的悬疑案件
@@ -441,6 +496,10 @@ class CaseGenerator:
             print(f"[案件生成] 学习模式案件生成出错: {str(e)}，使用模板案件兜底")
             case_data = CaseTemplates.get_detective_case()
 
+        # 学习模式同样按等级对齐线索数
+        case_data["revealed_clues"] = self._fit_clue_count(
+            case_data.get("revealed_clues"), clue_count
+        )
         return self._build_case_info(case_data)
 
     def _parse_case_response(self, response: str) -> Dict:
