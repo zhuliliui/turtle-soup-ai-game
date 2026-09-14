@@ -30,11 +30,11 @@ pip install -r requirements.txt
 ## 第三步：启动服务
 
 ### Windows用户
-双击 `start.bat`
+双击 `run_backend.bat`
 
 ### Mac/Linux用户
 ```bash
-./start.sh
+./run_backend.bat
 ```
 
 ### 手动启动
@@ -242,8 +242,8 @@ from sqlalchemy import create_engine
 │   └── index.html              # 游戏界面
 ├── README.md                   # 项目文档
 ├── GUIDE.md                    # 本文件
-├── start.bat                   # Windows启动
-└── start.sh                    # Mac/Linux启动
+├── run_backend.bat                   # Windows启动
+└── run_backend.bat                    # Mac/Linux启动
 ```
 
 ## 技术细节
@@ -269,7 +269,7 @@ from sqlalchemy import create_engine
 ## 部署建议
 
 ### 本地测试
-使用 `start.bat` 或 `start.sh`
+使用 `run_backend.bat` 或 `run_backend.bat`
 
 ### 生产部署
 1. 使用Gunicorn + Nginx
