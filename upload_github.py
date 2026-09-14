@@ -24,9 +24,9 @@ TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 OWNER = None
 
 # .gitignore 过滤规则（手工等价实现）
-IGNORE_DIRS = {".git", ".workbuddy", ".claude", "__pycache__", ".venv", "venv", "node_modules"}
+IGNORE_DIRS = {".git", ".workbuddy", ".workbuddy-ai", "__pycache__", ".venv", "venv", "node_modules"}
 IGNORE_FILES = {".env", ".env.local", ".DS_Store", "Thumbs.db"}
-IGNORE_SUFFIX = (".log", ".pyc", ".pyo")
+IGNORE_SUFFIX = (".log", ".pyc", ".pyo", ".bak", ".tmp")
 
 
 def is_ignored(rel_path: str) -> bool:
@@ -36,6 +36,8 @@ def is_ignored(rel_path: str) -> bool:
             return True
     name = parts[-1]
     if name in IGNORE_FILES or name.endswith(IGNORE_SUFFIX):
+        return True
+    if ".bak-" in name or ".bak." in name:
         return True
     if name == ".env" or name.endswith(".env"):
         return True
