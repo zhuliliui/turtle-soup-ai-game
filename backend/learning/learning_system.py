@@ -243,6 +243,7 @@ class ExerciseGenerator:
 防泄露铁律（必须遵守）：
 - question 只包含题干本身：严禁附加词条说明、知识卡片、中文释义、常用搭配、同义词列表等任何提示文字。
 - 严禁把答案词本身或其变体写进 question——玩家看到即等于送分，属于废题。
+- 严禁摘抄/复述/改写学习材料原文的句子：题目必须是你对知识点的全新原创表述，玩家粘贴的资料一个字都不能出现在题目里。
 """
 
     @staticmethod
@@ -279,13 +280,11 @@ class ExerciseGenerator:
 
 知识点（仅供你确定考查方向，不得原文出现在题目中）：{knowledge_point}
 {self._avoid_section(avoid_questions)}
-参考材料片段：
-{material_content[:500]}
 
 难度：{diff_desc[difficulty]}
 {leak_warn_section}
 要求：
-1. 题目要准确、清晰
+1. 题目要准确、清晰，必须是围绕知识点的全新原创题（不得摘抄学习材料原文）
 2. 4个选项，只有1个正确
 3. 错误选项要有迷惑性，不能明显错误
 4. 提供详细解析
@@ -331,11 +330,9 @@ class ExerciseGenerator:
 
 知识点（仅供你确定考查方向，不得原文出现在题目中）：{knowledge_point}
 {self._avoid_section(avoid_questions)}
-参考材料：
-{material_content[:500]}
 {leak_warn_section}
 要求：
-1. 陈述要清晰明确
+1. 陈述要清晰明确，必须是围绕知识点的全新原创表述（不得摘抄学习材料原文）
 2. 不能模棱两可
 3. 提供解析
 {self._no_leak_section()}
