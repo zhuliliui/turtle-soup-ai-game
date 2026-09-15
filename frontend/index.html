@@ -1806,6 +1806,49 @@
         #gameScreen .btn { font-size: 16.5px; }
         #gameScreen .chat-bubble { font-size: 16.5px; }
         #gameScreen .chat-avatar { font-size: 19px; }
+
+        /* ============ 移动端适配（≤768px：手机竖屏 / 窄窗口） ============ */
+        @media (max-width: 768px) {
+            /* 1) 主区改上下堆叠，替代左右分栏；放开整页竖向滚动 */
+            body { overflow-y: auto; }
+            .main-container {
+                flex-direction: column;
+                height: auto;
+                padding: 12px;
+                gap: 12px;
+            }
+            .case-panel { flex: none; }
+            .case-content { flex: none; overflow-y: visible; padding: 16px; }
+            .inquiry-history { min-height: 160px; }
+            .reasoning-panel { width: auto !important; padding: 14px; }  /* !important 压过拖动条存下的内联宽度 */
+            .panel-resizer, #panelResizer { display: none !important; }
+
+            /* 2) 顶栏：允许换行 + 缩字号，防挤压溢出 */
+            .top-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+            .top-bar-left { flex-wrap: wrap; gap: 8px; }
+            .status-indicators { flex-wrap: wrap; gap: 8px 14px; }
+            #gameScreen .case-title { font-size: 17px; }
+            #gameScreen .status-item { font-size: 13px; }
+            #gameScreen .status-value { font-size: 14.5px; }
+            #gameScreen .section-title { font-size: 16.5px; }
+            #gameScreen .section-content { font-size: 15.5px; line-height: 1.85; }
+            #gameScreen .chat-bubble { font-size: 15px; }
+
+            /* 3) 操作区：输入条吸附底部（手机推理主要靠提问，输入框常驻可见），按钮紧凑化 */
+            .action-bar {
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                padding: 10px 12px 14px;
+            }
+            #gameScreen .btn { font-size: 14px; padding: 9px 16px; }
+            #gameScreen .action-input { font-size: 15px; }
+
+            /* 4) 开始页：logo 容器与按钮在窄屏收窄（原 400px 会超出手机屏宽） */
+            #startModal .start-logo-wrap { width: min(320px, 86vw); }
+            #startModal .pill-btn, #startModal .mode-pill, #startModal .btn-wordart { max-width: 86vw; }
+            #startModal .mode-pill { font-size: 15px; padding: 8px 12px; white-space: nowrap; }
+        }
     </style>
 </head>
 <body data-page-node-id="OdIevaQo751o0qp1rbcAfr">
@@ -2447,6 +2490,8 @@
             if (data.game_over) {
                 if (data.case_solved) {
                     showNotification('🎉 恭喜破案！', 'success');
+                } else {
+                    showNotification('💔 任务失败：真相还原度未达 60%', 'error');
                 }
                 if (data.game_over_message) {
                     addInquiryToHistory('ai', data.game_over_message);
@@ -3041,9 +3086,14 @@
 
             const avatar = document.createElement('div');
             avatar.className = 'chat-avatar';
-            // 可爱头像：AI=小猫，玩家=小狗（与首页素材一致）
+            // 头像：AI=小猫；玩家=知乎登录头像（未登录用个人资料默认小猫贴纸）
             const avImg = document.createElement('img');
-            avImg.src = role === 'user' ? 'dog.webp' : 'cat.webp';
+            if (role === 'user') {
+                avImg.src = playerAvatarSrc();
+                avImg.onerror = () => { avImg.onerror = null; avImg.src = 'profile_cat.png'; };  // 知乎头像加载失败兜底
+            } else {
+                avImg.src = 'cat.webp';
+            }
             avImg.alt = '';
             avatar.appendChild(avImg);
 
@@ -3533,6 +3583,19 @@
         // ==================== 知乎集成（OAuth 登录 + 故事改编） ====================
         // 会话 cookie 为 HttpOnly，前端只查询状态；token 由后端保管
         let zhihuLoginConfigured = false;
+        let zhihuPlayerAvatar = null;   // 玩家聊天气泡头像：知乎登录后为其头像 URL，未登录为 null（用默认贴纸）
+
+        // 玩家头像取值：知乎头像 → 个人资料默认小猫贴纸
+        function playerAvatarSrc() {
+            return zhihuPlayerAvatar || 'profile_cat.png';
+        }
+
+        // 登录状态变化后，同步刷新已渲染的用户气泡头像
+        function refreshChatAvatars() {
+            document.querySelectorAll('.chat-user .chat-avatar img').forEach(img => {
+                img.src = playerAvatarSrc();
+            });
+        }
 
         async function refreshZhihuMe() {
             const nameEl = document.getElementById('zhihuName');
@@ -3548,9 +3611,12 @@
                     nameEl.textContent = (me.mock ? '演示会话：' : '') + (u.fullname || '知乎用户');
                     if (hintEl) hintEl.textContent = me.mock ? '演示登录·非真实知乎账号（填入OAuth凭证后自动变真登录）' : '已通过知乎授权登录';
                     if (u.avatar_path) {
-                        avatarEl.innerHTML = `<img src="${u.avatar_path}" style="width:100%;height:100%;object-fit:cover;" alt="">`;
+                        const avUrl = u.avatar_path.replace(/^http:\/\//i, 'https://');  // 统一 https，避免混合内容被浏览器拦截
+                        avatarEl.innerHTML = `<img src="${avUrl}" style="width:100%;height:100%;object-fit:cover;" alt="">`;
+                        zhihuPlayerAvatar = avUrl;
                     } else {
                         avatarEl.textContent = me.mock ? '🎭' : '知';
+                        zhihuPlayerAvatar = null;
                     }
                     loginBtn.classList.add('hidden');
                     logoutBtn.classList.remove('hidden');
@@ -3558,9 +3624,11 @@
                     nameEl.textContent = '未登录知乎';
                     if (hintEl) hintEl.textContent = zhihuLoginConfigured ? '登录后可在作品页展示账号身份' : '后端未配置OAuth，登录为演示模式';
                     avatarEl.textContent = '知';
+                    zhihuPlayerAvatar = null;
                     loginBtn.classList.remove('hidden');
                     logoutBtn.classList.add('hidden');
                 }
+                refreshChatAvatars();
             } catch (e) { /* 后端未启动，静默 */ }
         }
 
