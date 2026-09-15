@@ -192,7 +192,22 @@ class ExerciseGenerator:
                 )
             return None
 
-        exercise = await dispatch()
+        # 出题全程兜底：LLM 网络/解析异常一律转成 None，由上层走「习题生成失败」提示，绝不 500
+        try:
+            exercise = await dispatch()
+        except Exception as e:
+            print(f"[出题] 生成异常（{exercise_type}）：{e}")
+            exercise = None
+
+        # LLM 偶发返回无法解析的内容（空回复/非 JSON）时自动重试一次
+        if exercise is None:
+            try:
+                exercise = await dispatch()
+                if exercise is not None:
+                    print("[出题] 首次生成失败，重试成功")
+            except Exception as e:
+                print(f"[出题] 重试仍异常（{exercise_type}）：{e}")
+                exercise = None
 
         # 第一道防线：剥离 LLM 复读到题干里的知识点标注（【…】块 / 知识点N：前缀）
         if exercise:
@@ -202,7 +217,11 @@ class ExerciseGenerator:
         leak_prone = exercise_type in (ExerciseType.SINGLE_CHOICE, ExerciseType.TRUE_FALSE)
         if exercise and leak_prone and self._question_leaks_answer(exercise):
             print("[出题] 检测到题干泄露答案，重新生成中...")
-            exercise = await dispatch(leak_warning=True)
+            try:
+                exercise = await dispatch(leak_warning=True)
+            except Exception as e:
+                print(f"[出题] 防泄露重生成异常：{e}")
+                exercise = None
             if exercise:
                 exercise.question = self._strip_knowledge_label(exercise.question)
             if exercise and self._question_leaks_answer(exercise):
@@ -340,16 +359,23 @@ class ExerciseGenerator:
 """
 
         response = await self.llm.generate(prompt)
-        data = self._parse_json(response)
+        data = self._parse_json(response) or {}
+
+        question = str(data.get("question") or "").strip()
+        options = [str(o).strip() for o in (data.get("options") or []) if str(o).strip()]
+        # LLM 偶发返回无法解析的内容：返回 None 走上层重试与「习题生成失败」兜底，绝不抛裸异常
+        if not question or len(options) < 2:
+            print("[出题] 选择题返回内容不完整，放弃本题")
+            return None
 
         return Exercise(
             exercise_id=str(uuid.uuid4()),
             exercise_type=ExerciseType.SINGLE_CHOICE,
             difficulty=difficulty,
-            question=data.get("question", ""),
-            options=data.get("options", []),
-            correct_answer=data.get("correct_answer", ""),
-            explanation=data.get("explanation", ""),
+            question=question,
+            options=options,
+            correct_answer=str(data.get("correct_answer") or ""),
+            explanation=str(data.get("explanation") or ""),
             knowledge_point=knowledge_point,
             reward_type=self._assign_reward_type()
         )
@@ -386,16 +412,22 @@ class ExerciseGenerator:
 """
 
         response = await self.llm.generate(prompt)
-        data = self._parse_json(response)
+        data = self._parse_json(response) or {}
+
+        question = str(data.get("question") or "").strip()
+        # 解析失败/题干为空 → 返回 None 走上层重试与兜底
+        if not question:
+            print("[出题] 判断题返回内容不完整，放弃本题")
+            return None
 
         return Exercise(
             exercise_id=str(uuid.uuid4()),
             exercise_type=ExerciseType.TRUE_FALSE,
             difficulty=difficulty,
-            question=data.get("question", ""),
+            question=question,
             options=["对", "错"],
-            correct_answer=data.get("correct_answer", ""),
-            explanation=data.get("explanation", ""),
+            correct_answer=str(data.get("correct_answer") or ""),
+            explanation=str(data.get("explanation") or ""),
             knowledge_point=knowledge_point,
             reward_type=self._assign_reward_type()
         )
