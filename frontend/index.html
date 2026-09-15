@@ -2788,10 +2788,11 @@
             document.getElementById('progressFill').style.width = `${progress}%`;
             document.getElementById('reasoningLevel').textContent = `Lv.${state.ability.reasoning_level}`;
 
-            // 更新增益
+            // 更新增益（已消耗的 used 卡不再显示，提问生效后自动从面板消失）
             const bonusesList = document.getElementById('bonusesList');
-            if (state.active_bonuses && state.active_bonuses.length > 0) {
-                bonusesList.innerHTML = state.active_bonuses.map(b => `
+            const visibleBonuses = (state.active_bonuses || []).filter(b => !b.used);
+            if (visibleBonuses.length > 0) {
+                bonusesList.innerHTML = visibleBonuses.map(b => `
                     <div class="bonus-item">${b.description}</div>
                 `).join('');
             } else {
