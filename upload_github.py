@@ -10,6 +10,7 @@
   3. Contents API 逐文件上传到 main 分支
 """
 import base64
+import hashlib
 import http.client
 import json
 import os
@@ -126,26 +127,39 @@ def main():
         print(f"创建仓库失败: {code} {resp.get('message')}")
         sys.exit(1)
 
-    # 3. 逐文件上传（已存在的文件先取 sha 再更新）
+    # 3. 一次拉取远端全量 sha 清单（Git Trees API），本地计算 blob sha 比对。
+    #    不再逐文件 GET 内容——大文件（MB 级封面图）下载极易断流（IncompleteRead 踩坑两次）。
+    code, tree = api_request("GET", f"/repos/{OWNER}/{repo_name}/git/trees/main?recursive=1")
+    remote_shas = {}
+    if code == 200:
+        for entry in tree.get("tree", []):
+            if entry.get("type") == "blob":
+                remote_shas[entry["path"]] = entry["sha"]
+        print(f"[3/3] 远端树获取 OK（{len(remote_shas)} 个文件），开始比对上传...")
+    else:
+        print(f"[3/3] 远端树获取 {code}（空仓库？），按全新上传处理...")
+
     files = collect_files()
-    print(f"[3/3] 开始上传 {len(files)} 个文件...")
     fail = []
+
+    def local_blob_sha(path: str) -> str:
+        with open(path, "rb") as f:
+            data = f.read()
+        return hashlib.sha1(f"blob {len(data)}".encode() + b"\0" + data).hexdigest()
+
     for i, (full, rel) in enumerate(files, 1):
         with open(full, "rb") as f:
             content = base64.b64encode(f.read()).decode()
 
-        # 预取 sha（文件已存在时必须携带才能更新）
-        sha = None
-        gcode, gresp = api_request("GET", f"/repos/{OWNER}/{repo_name}/contents/{quote(rel)}?ref=main")
-        if gcode == 200:
-            sha = gresp.get("sha")
-            if sha and gresp.get("content") and gresp["content"].replace("\n", "") == content:
-                print(f"  [{i}/{len(files)}] SKIP {rel} (内容未变)")
-                continue
+        local_sha = local_blob_sha(full)
+        remote_sha = remote_shas.get(rel)
+        if remote_sha and remote_sha == local_sha:
+            print(f"  [{i}/{len(files)}] SKIP {rel} (内容未变)")
+            continue
 
         body = {"message": f"upload: {rel}", "content": content, "branch": "main"}
-        if sha:
-            body["sha"] = sha
+        if remote_sha:
+            body["sha"] = remote_sha
         code, resp = api_request("PUT", f"/repos/{OWNER}/{repo_name}/contents/{quote(rel)}", body)
         ok = code in (201, 200)
         size_kb = os.path.getsize(full) / 1024
