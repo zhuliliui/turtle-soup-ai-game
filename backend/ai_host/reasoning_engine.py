@@ -138,7 +138,7 @@ class ReasoningEngine:
             data["completeness"] = completeness
             state_updates = {
                 "case_solved": is_correct,
-                "game_over": is_correct,
+                "game_over": True,   # 还原真相是决胜一击：成功破案、失败终局（最终由 controller 结算）
                 "verification_result": data
             }
             yield ("final", ("", state_updates))
@@ -472,7 +472,7 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 
         state_updates = {
             "case_solved": is_correct,
-            "game_over": is_correct,
+            "game_over": True,   # 还原真相是决胜一击：成功破案、失败终局（最终由 controller 结算）
             "verification_result": verification
         }
 
