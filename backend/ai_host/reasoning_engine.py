@@ -172,6 +172,13 @@ class ReasoningEngine:
         r"身亡|去世|杀死|害死|毒死|勒死|谋杀|死于|尸)"
     )
 
+    # 「询问他人」目标解析（与前端 looksLikeAskPerson 规则一致）：
+    # 「问周远：发生什么了」→ (周远, 发生什么了)；「问题目难不难」不匹配（「问题」被排除）
+    ASK_TARGET_PATTERN = re.compile(
+        r"^\s*(?:问问|询问|打听|请教|问)(?![题卷目案])\s*(.{1,8}?)\s*[：:，,。！？\s]\s*(.+)$",
+        re.DOTALL,
+    )
+
     @classmethod
     def _is_death_assertion(cls, question: str) -> bool:
         """玩家提问是否涉及死亡状态断言（需要触发二次核验）"""
@@ -841,13 +848,33 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
         yield ("final", full.strip())
 
     def _build_ask_person_prompt(self, game_state: GameState, content: str) -> str:
-        """构建「询问他人」的提示词"""
+        """构建「询问他人」的提示词
+
+        被询问人在代码层用正则锁定（与前端 looksLikeAskPerson 规则一致）：
+        锁定后 prompt 硬性要求以该人物第一人称回答，杜绝模型角色漂移
+        （问陈屿却自称周远、问周远回旁观者视角的翻车）。
+        """
+        m = self.ASK_TARGET_PATTERN.match(content or "")
+        if m:
+            target, question = m.group(1).strip(), m.group(2).strip()
+            target_block = f"""被询问人（已锁定，必须严格遵守）：{target}
+
+你现在就是{target}本人，正在当面回答玩家的提问。硬性要求：
+- 必须以{target}的第一人称说话（「我……」），语气符合其身份
+- 你就是{target}，绝不能自称其他人物的名字，也不能以旁观者视角转述{target}做了什么
+"""
+            ask_line = f"玩家向你（{target}）提问：「{question}」"
+        else:
+            target_block = """被询问人：从玩家的打听内容中判断玩家想询问谁（人物/角色）。如果没指明，就选一个与案件最相关的人物，以该人物的第一人称回答，且全篇只以该人物身份说话"""
+            ask_line = f"玩家的打听内容：{content}"
 
         prompt = f"""
 玩家正在玩海龟汤推理游戏，现在想去打听消息、找人要线索。
 
 玩家身份：{game_state.user_identity}
-玩家的打听内容：{content}
+{ask_line}
+
+{target_block}
 
 案件真相：
 {self._format_truth(game_state.case.truth)}
@@ -862,12 +889,10 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 {self._format_recent_inquiries(game_state.inquiry_history[-3:])}
 
 任务：
-- 从玩家的打听内容中判断玩家想询问谁（人物/角色）。如果没指明，就选一个与案件最相关的人物
-- 以该人物的第一人称口吻回答玩家，语气符合其身份（如老师、保安、同学、医生……）
-- 根据案件真相，透露一条与真相一致、且符合该人物视角的新情报（不要与已知线索重复）
+- 根据案件真相，透露一条与真相一致、且符合你视角的新情报（不要与已知线索重复）
 - 只透露情报，不要直接说出完整真相或凶手
 - 80字以内，口语化，像真人说话
-- 如果玩家问的问题与案件无关，就以该人物的身份自然地回避
+- 如果玩家问的问题与案件无关，就以你的身份自然地回避
 
 直接返回该人物的说话内容即可，不要输出JSON、旁白或任何标记。
 """
