@@ -269,7 +269,7 @@ class HostPersona:
         if chances_left > 0:
             feedback += f"\n\n你还有 {chances_left} 次验证机会。参照上面的差距，再试一次。"
         else:
-            feedback += "\n\n这是你最后的验证机会已经用完。"
+            feedback += "\n\n🔓 还原真相未达 60%——本局任务失败。真相即将揭晓。"
 
         feedback += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
