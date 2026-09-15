@@ -112,7 +112,8 @@ async def root():
     """根路径：优先返回前端页面（单端口部署，公网 Demo 同源访问），否则返回 API 信息"""
     index_path = os.path.join(_FRONTEND_DIR, "index.html")
     if os.path.isfile(index_path):
-        return FileResponse(index_path)
+        # no-store：HTML 永不缓存，杜绝「部署后界面还是旧版」的强刷问题
+        return FileResponse(index_path, headers={"Cache-Control": "no-store, must-revalidate"})
     return {"message": "海龟汤推理游戏 API", "status": "running"}
 
 
