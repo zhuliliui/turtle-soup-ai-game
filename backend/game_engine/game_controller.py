@@ -908,13 +908,26 @@ class GameController:
             }
         }
 
-        # 增益随机：答对后从奖励池中随机抽取（不再沿用习题预设的 reward_type）
-        # 隐藏线索已解锁完时权重降低，避免总是退化成「额外机会」
+        # 增益随机：洗牌袋机制——把奖励池洗匀成袋，抽空再重洗。
+        # 保证每 6 次奖励恰好每种一次，杜绝「连抽三次知识」的小样本扎堆（纯 random.choice 的体感坑）。
+        # 隐藏线索已解锁完时池中 hidden_clue 替换为 extra_turn（避免总退化提示）；
+        # 袋中残留的 hidden_clue 若遇线索全开，下方 reveal_clue 分支已有退化 extra_turn 兜底。
         pool = ["insight", "logic", "knowledge", "association", "extra_turn", "hidden_clue"]
         has_hidden = any(not c.revealed for c in self.game_state.case.hidden_clues)
         if not has_hidden:
             pool = ["insight", "logic", "knowledge", "association", "extra_turn", "extra_turn"]
-        picked_type = random.choice(pool)
+        if not getattr(self, "_reward_bag", None):
+            bag = pool[:]
+            random.shuffle(bag)
+            # 跨袋边界去重：下一个出的奖励不与上一个同类，杜绝跨袋「知识、知识」连击体感
+            if bag and bag[-1] == getattr(self, "_last_reward", ""):
+                for j in range(len(bag) - 1):
+                    if bag[j] != bag[-1]:
+                        bag[-1], bag[j] = bag[j], bag[-1]
+                        break
+            self._reward_bag = bag
+        picked_type = self._reward_bag.pop()
+        self._last_reward = picked_type
 
         config = dict(reward_configs.get(picked_type, reward_configs["extra_turn"]))
         reward_type = picked_type
