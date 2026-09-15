@@ -19,6 +19,10 @@ import urllib.request
 import urllib.error
 from urllib.parse import quote
 
+# 重定向到文件时 stdout 默认块缓冲（~8KB 才落盘），进度日志会长时间"卡住不动"；
+# 改为逐行实时刷新，方便 tail -f / 手动查看进度
+sys.stdout.reconfigure(line_buffering=True)
+
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 API = "https://api.github.com"
 TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
