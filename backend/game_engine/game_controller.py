@@ -278,8 +278,10 @@ class GameController:
         elif action_type == "ask_person":
             gen_factory = lambda: self.reasoning_engine.generate_ask_person_stream(self.game_state, content)
         elif action_type == "question":
+            # 能力增益：peek 出本次生效的类型注入 prompt；成功后 finalize 里才扣
+            used_buffs = self._peek_question_buffs()
             gen_factory = lambda: self.reasoning_engine.process_inquiry_stream(
-                self.game_state, InquiryType.QUESTION, content
+                self.game_state, InquiryType.QUESTION, content, active_buffs=used_buffs or None
             )
         elif action_type == "hypothesis":
             gen_factory = lambda: self.reasoning_engine.process_inquiry_stream(
@@ -321,7 +323,7 @@ class GameController:
 
         # 复用非流式的状态更新逻辑
         if action_type == "question":
-            yield {"type": "final", "data": await self._finalize_question(content, final_payload)}
+            yield {"type": "final", "data": await self._finalize_question(content, final_payload, used_buffs=used_buffs)}
         elif action_type == "hypothesis":
             yield {"type": "final", "data": await self._finalize_hypothesis(content, final_payload)}
         elif action_type == "ask_person":
@@ -334,24 +336,52 @@ class GameController:
     async def _handle_question(self, question: str) -> Dict:
         """处理玩家提问"""
 
-        # AI判断和回应（先调用，成功后才消耗推理机会，避免AI故障时白扣次数）
+        # 能力增益：先 peek（不消耗），LLM 成功后在 finalize 里才真正扣掉
+        used_buffs = self._peek_question_buffs()
         try:
             ai_response, state_updates = await self.reasoning_engine.process_inquiry(
                 self.game_state,
                 InquiryType.QUESTION,
-                question
+                question,
+                active_buffs=used_buffs or None
             )
         except LLMError as e:
             return {"error": f"AI 服务暂时不可用：{e}（本次未消耗推理机会，请稍后重试）"}
 
-        return await self._finalize_question(question, (ai_response, state_updates))
+        return await self._finalize_question(question, (ai_response, state_updates), used_buffs=used_buffs)
 
-    async def _finalize_question(self, question: str, payload) -> Dict:
+    # ---- 能力增益（知识/联想/逻辑/洞察）：提问时生效 ----
+
+    QUESTION_BUFF_TYPES = ("knowledge", "association", "logic", "insight")
+
+    def _peek_question_buffs(self) -> Dict[str, bool]:
+        """查看本次提问可生效的能力增益类型（不消耗；LLM 调用成功后才扣）"""
+        active = {}
+        for b in self.game_state.active_bonuses:
+            if not b.used and b.bonus_type in self.QUESTION_BUFF_TYPES and b.bonus_type not in active:
+                active[b.bonus_type] = True
+        return active
+
+    def _consume_question_buffs(self, active: Dict[str, bool]):
+        """提问成功后扣掉本次用掉的增益（每种类型消耗最早获得的一张，标记 used 供存档持久化）"""
+        if not active:
+            return
+        for t in active:
+            for b in self.game_state.active_bonuses:
+                if b.bonus_type == t and not b.used:
+                    b.used = True
+                    print(f"[增益] 已消耗一张「{t}」增益卡")
+                    break
+
+    async def _finalize_question(self, question: str, payload, used_buffs: Optional[Dict] = None) -> Dict:
         """提问收尾：扣次数、更新进度、记录、存档（流式/非流式共用）"""
         ai_response, state_updates = payload
 
         # 消耗一次推理机会
         self.game_state.use_turn()
+
+        # 扣掉本次提问用掉的能力增益（LLM 已成功出结果）
+        self._consume_question_buffs(used_buffs or {})
 
         # 对话流水：玩家提问 + AI回应
         self._append_log("user", question)
@@ -558,12 +588,15 @@ class GameController:
             if level_note:
                 game_over_message += "\n\n" + level_note
 
-            self._append_log("ai", failure_message + "\n\n" + game_over_message)
+            # 流水拆两条：恢复重放后与实时呈现一致（判定反馈一块 + 终局揭晓一块）
+            self._append_log("ai", failure_message)
+            self._append_log("ai", game_over_message)
             self._save_to_disk()
 
             return {
                 "success": False,
-                "message": failure_message + "\n\n" + game_over_message,
+                # message 只放判定反馈；终局揭晓由 game_over_message 独立渲染，避免同一内容出现两遍
+                "message": failure_message,
                 "game_over": True,
                 "game_over_message": game_over_message,
                 "case_solved": False,
