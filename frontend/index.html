@@ -1287,11 +1287,47 @@
         }
 
         /* 一句话开局弹窗专用 */
-        #sentenceDialog .form-textarea {
-            min-height: 90px;
-            font-size: 15px;
-            line-height: 1.7;
+        #sentenceDialog .modal-content {
+            padding: 26px 26px 22px;
+            max-height: 92vh;
         }
+        #sentenceDialog .form-textarea {
+            min-height: 76px;
+            font-size: 14.5px;
+            line-height: 1.6;
+        }
+        #sentenceDialog .dlg-tip {
+            color: #5c6e5c;
+            font-size: 13px;
+            margin-bottom: 10px;
+            line-height: 1.55;
+        }
+        #sentenceDialog .dlg-examples {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: rgba(102,187,106,0.10);
+            border: 1px solid #c8dcc8;
+            border-radius: 10px;
+            font-size: 12.5px;
+            color: #5c6e5c;
+            line-height: 1.6;
+        }
+        #sentenceDialog .dlg-examples .ex-title {
+            font-weight: 700;
+            color: #2e7d32;
+            margin-bottom: 3px;
+        }
+        #sentenceDialog .dlg-examples .ex-item {
+            cursor: pointer;
+            padding: 1px 0;
+            transition: color .15s;
+        }
+        #sentenceDialog .dlg-examples .ex-item:hover {
+            color: #2e7d32;
+            text-decoration: underline dotted;
+        }
+        #sentenceDialog .btn-wordart { margin-top: 14px; }
+        #sentenceDialog .btn-wordart .start-wordart { width: 158px; }
         .sentence-preview {
             margin-top: 10px;
             padding: 11px 14px;
@@ -2055,17 +2091,17 @@
                     <h1 class="start-title" style="font-size: 22px; margin: 0;">🎭 一句话开局</h1>
                     <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()" style="font-size: 13px;">✕ 关闭</button>
                 </div>
-                <p style="color: #5c6e5c; font-size: 14px; margin-bottom: 14px; line-height: 1.6;">用一句话描述身份和事件，AI 会据此生成专属汤面。可以只写身份，也可以身份+事件一起写。</p>
-                <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：&#10;我是一个学生&#10;&#10;或：&#10;小明昨晚失踪了。我是他的老师" maxlength="200" rows="4" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
+                <p class="dlg-tip">用一句话描述身份和事件，AI 据此生成专属汤面（可只写身份）。</p>
+                <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：我是一个学生　或：小明昨晚失踪了。我是他的老师" maxlength="200" rows="3" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                     <span id="sentenceDialogCount" style="color: #7c8b7c; font-size: 12px;">0 / 200</span>
                     <span style="color: #7c8b7c; font-size: 12px;">回车换行 · Ctrl+Enter 确认</span>
                 </div>
-                <div style="margin-top: 14px; padding: 12px 14px; background: rgba(102,187,106,0.10); border: 1px solid #c8dcc8; border-radius: 10px; font-size: 13px; color: #5c6e5c; line-height: 1.7;">
-                    <div style="font-weight: 700; color: #2e7d32; margin-bottom: 4px;">💡 示例</div>
-                    <div>· 我是一个学生</div>
-                    <div>· 小明昨晚失踪了。我是他的老师</div>
-                    <div>· 我在医院醒来，记不起自己是谁</div>
+                <div class="dlg-examples">
+                    <div class="ex-title">💡 示例（点一下直接填入）</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">· 我是一个学生</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">· 小明昨晚失踪了。我是他的老师</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">· 我在医院醒来，记不起自己是谁</div>
                 </div>
                 <button type="button" class="pill-btn btn-wordart" onclick="confirmSentence()" style="margin-top: 18px;"><img src="start.png" alt="开始" class="start-wordart"></button>
             </div>
@@ -3514,6 +3550,15 @@
         function updateSentenceCount() {
             const v = document.getElementById('sentenceDialogInput').value;
             document.getElementById('sentenceDialogCount').textContent = v.length + ' / 200';
+        }
+        // 点击示例条目：把示例文案填入输入框（去掉前缀「· 」）
+        function fillSentenceExample(el) {
+            const text = (el.textContent || '').replace(/^[·\s]+/, '').trim();
+            if (!text) return;
+            const input = document.getElementById('sentenceDialogInput');
+            input.value = text;
+            input.focus();
+            updateSentenceCount();
         }
         function confirmSentence() {
             const v = document.getElementById('sentenceDialogInput').value.trim();
