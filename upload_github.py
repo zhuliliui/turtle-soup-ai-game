@@ -10,6 +10,7 @@
   3. Contents API 逐文件上传到 main 分支
 """
 import base64
+import http.client
 import json
 import os
 import sys
@@ -79,7 +80,9 @@ def api_request(method: str, path: str, body: dict = None, raw: bool = False, re
             return r.status, (payload if raw else json.loads(payload or b"{}"))
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read() or b"{}")
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as e:
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError,
+                http.client.IncompleteRead, http.client.HTTPException) as e:
+            # IncompleteRead：大文件下载中途断流（读到的字节数 < Content-Length），属网络抖动需重试
             last_err = e
             wait = 2 * (attempt + 1)
             print(f"  网络异常({e})，{wait}s 后第 {attempt + 2}/{retries} 次尝试...")
