@@ -1,4 +1,4 @@
-"""LLM客户端封装 - 支持Claude API"""
+"""LLM客户端封装 - 支持 Anthropic 协议 + OpenAI 兼容协议（deepseek/gpt 等便宜模型）"""
 from typing import Optional, Dict, AsyncGenerator
 import os
 import asyncio
@@ -15,7 +15,7 @@ class LLMError(Exception):
 
 
 class LLMClient:
-    """LLM客户端 - 封装对Claude API的调用"""
+    """LLM客户端 - 按模型名自动路由协议：deepseek-*/gpt-* → OpenAI 兼容；claude-* → Anthropic"""
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
@@ -26,7 +26,18 @@ class LLMClient:
 
         # 支持自定义API网关
         self.base_url = os.getenv("API_BASE_URL", "https://api.anthropic.com").rstrip("/")
-        print(f"[LLM] 使用API端点: {self.base_url}, 模型: {self.model}")
+
+        # 协议路由：网关按模型名分流。LLM_PROTOCOL=openai/anthropic 可强制指定。
+        env_proto = os.getenv("LLM_PROTOCOL", "").strip().lower()
+        m = self.model.lower()
+        if env_proto in ("openai", "anthropic"):
+            self.protocol = env_proto
+        elif m.startswith(("deepseek", "gpt", "o1", "o3", "o4")):
+            self.protocol = "openai"
+        else:
+            self.protocol = "anthropic"
+
+        print(f"[LLM] 使用API端点: {self.base_url}, 模型: {self.model}, 协议: {self.protocol}")
 
     async def generate(
         self,
@@ -55,22 +66,39 @@ class LLMClient:
             LLMError: API调用失败
         """
 
-        url = f"{self.base_url}/v1/messages"
-        headers = {
-            'x-api-key': self.api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        }
-
-        data = {
-            'model': self.model,
-            'max_tokens': max_tokens,
-            'temperature': temperature,
-            'messages': [{'role': 'user', 'content': prompt}]
-        }
-
-        if system_prompt:
-            data['system'] = system_prompt
+        if self.protocol == "openai":
+            # OpenAI 兼容协议：/v1/chat/completions + Bearer 认证
+            url = f"{self.base_url}/v1/chat/completions"
+            headers = {
+                'Authorization': f'Bearer {self.api_key}',
+                'content-type': 'application/json'
+            }
+            messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
+            messages.append({'role': 'user', 'content': prompt})
+            data = {
+                'model': self.model,
+                'max_tokens': max_tokens,
+                'temperature': temperature,
+                'messages': messages
+            }
+        else:
+            # Anthropic 协议：/v1/messages + x-api-key
+            url = f"{self.base_url}/v1/messages"
+            headers = {
+                'x-api-key': self.api_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            }
+            data = {
+                'model': self.model,
+                'max_tokens': max_tokens,
+                'temperature': temperature,
+                'messages': [{'role': 'user', 'content': prompt}]
+            }
+            if system_prompt:
+                data['system'] = system_prompt
 
         last_error = None
         for attempt in range(1 + retries):
@@ -92,9 +120,14 @@ class LLMClient:
                 # 防御：响应头缺 charset 时 requests 有 latin-1 回退隐患，显式按 UTF-8 解码
                 response.encoding = "utf-8"
                 result_json = response.json()
-                content_blocks = result_json.get('content') or []
-                texts = [b.get('text', '') for b in content_blocks if isinstance(b, dict) and b.get('type') == 'text']
-                result = ''.join(texts).strip()
+
+                if self.protocol == "openai":
+                    choices = result_json.get('choices') or []
+                    result = ((((choices[0] or {}).get('message') or {}).get('content')) or '').strip()
+                else:
+                    content_blocks = result_json.get('content') or []
+                    texts = [b.get('text', '') for b in content_blocks if isinstance(b, dict) and b.get('type') == 'text']
+                    result = ''.join(texts).strip()
 
                 if not result:
                     last_error = LLMError("API返回了空内容")
@@ -126,23 +159,39 @@ class LLMClient:
         后台线程负责读 HTTP 流并写入队列，异步侧逐条取用，
         避免阻塞 FastAPI 事件循环。失败抛 LLMError。
         """
-        url = f"{self.base_url}/v1/messages"
-        headers = {
-            'x-api-key': self.api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        }
-
-        data = {
-            'model': self.model,
-            'max_tokens': max_tokens,
-            'temperature': temperature,
-            'stream': True,
-            'messages': [{'role': 'user', 'content': prompt}]
-        }
-
-        if system_prompt:
-            data['system'] = system_prompt
+        if self.protocol == "openai":
+            url = f"{self.base_url}/v1/chat/completions"
+            headers = {
+                'Authorization': f'Bearer {self.api_key}',
+                'content-type': 'application/json'
+            }
+            messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
+            messages.append({'role': 'user', 'content': prompt})
+            data = {
+                'model': self.model,
+                'max_tokens': max_tokens,
+                'temperature': temperature,
+                'stream': True,
+                'messages': messages
+            }
+        else:
+            url = f"{self.base_url}/v1/messages"
+            headers = {
+                'x-api-key': self.api_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            }
+            data = {
+                'model': self.model,
+                'max_tokens': max_tokens,
+                'temperature': temperature,
+                'stream': True,
+                'messages': [{'role': 'user', 'content': prompt}]
+            }
+            if system_prompt:
+                data['system'] = system_prompt
 
         loop = asyncio.get_running_loop()
         q: "_queue.Queue" = _queue.Queue()
@@ -174,6 +223,19 @@ class LLMClient:
                     try:
                         obj = json.loads(payload)
                     except json.JSONDecodeError:
+                        continue
+
+                    if self.protocol == "openai":
+                        # OpenAI chunk：choices[0].delta.content，finish_reason=stop 结束
+                        choices = obj.get("choices") or []
+                        if choices:
+                            delta = choices[0].get("delta") or {}
+                            piece = delta.get("content")
+                            if piece:
+                                got_any = True
+                                q.put(("delta", piece))
+                            if choices[0].get("finish_reason") == "stop":
+                                break
                         continue
 
                     ev_type = obj.get("type", "")
