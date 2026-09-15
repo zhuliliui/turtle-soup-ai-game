@@ -1346,29 +1346,37 @@
             border: 1.5px solid rgba(160, 190, 130, 0.55);
             border-radius: 14px;
         }
+        #sentenceDialog .form-textarea:focus {
+            border-color: #7fbb52;
+            box-shadow: 0 0 0 3px rgba(127, 187, 82, 0.18);
+            outline: none;
+        }
         #sentenceDialog .dlg-examples {
-            margin-top: 12px;
-            padding: 10px 14px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1.5px dashed #a9d07f;
-            border-radius: 14px;
-            font-size: 12.5px;
-            color: #5c6e5c;
-            line-height: 1.7;
+            margin-top: 13px;
         }
         #sentenceDialog .dlg-examples .ex-title {
             font-weight: 700;
             color: #2f5f26;
-            margin-bottom: 3px;
+            font-size: 12.5px;
+            margin-bottom: 8px;
         }
         #sentenceDialog .dlg-examples .ex-item {
+            display: inline-block;
+            margin: 0 7px 8px 0;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1.2px solid rgba(160, 190, 130, 0.65);
+            border-radius: 999px;
+            font-size: 12.5px;
+            color: #4d6142;
             cursor: pointer;
-            padding: 1px 0;
-            transition: color .15s;
+            transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
         }
         #sentenceDialog .dlg-examples .ex-item:hover {
+            background: #eef7dc;
+            border-color: #7fbb52;
             color: #2f6b28;
-            text-decoration: underline dotted;
+            transform: translateY(-1px);
         }
         .sentence-preview {
             margin-top: 10px;
@@ -2142,12 +2150,12 @@
                     <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()">✕ 关闭</button>
                 </div>
                 <p class="dlg-tip">用一句话描述身份和事件，AI 据此生成专属汤面（可只写身份）。</p>
-                <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：我是一个学生　或：小明昨晚失踪了。我是他的老师" maxlength="200" rows="3" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
+                <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：我是一个学生&#10;或：小明昨晚失踪了。我是他的老师" maxlength="200" rows="3" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
                 <div class="dlg-examples">
                     <div class="ex-title">💡 示例（点一下直接填入）</div>
-                    <div class="ex-item" onclick="fillSentenceExample(this)">· 我是一个学生</div>
-                    <div class="ex-item" onclick="fillSentenceExample(this)">· 小明昨晚失踪了。我是他的老师</div>
-                    <div class="ex-item" onclick="fillSentenceExample(this)">· 我在医院醒来，记不起自己是谁</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">我是一个学生</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">小明昨晚失踪了。我是他的老师</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">我在医院醒来，记不起自己是谁</div>
                 </div>
                 <div class="learn-foot">
                     <span id="sentenceDialogCount" class="learn-count">0 / 200 · Ctrl+Enter 确认</span>
@@ -3601,7 +3609,9 @@
         }
         function updateSentenceCount() {
             const v = document.getElementById('sentenceDialogInput').value;
-            document.getElementById('sentenceDialogCount').textContent = v.length + ' / 200';
+            const el = document.getElementById('sentenceDialogCount');
+            el.textContent = v.length + ' / 200 · Ctrl+Enter 确认';
+            el.style.color = v.length >= 180 ? '#c0392b' : '';
         }
         // 点击示例条目：把示例文案填入输入框（去掉前缀「· 」）
         function fillSentenceExample(el) {
