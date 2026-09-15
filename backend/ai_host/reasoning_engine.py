@@ -2,6 +2,7 @@
 from typing import Dict, List, Tuple, Optional
 from models.game_state import GameState, InquiryType, InquiryRecord, Clue
 from ai_host.llm_client import LLMError, extract_json
+import re
 import uuid
 import time
 
@@ -28,16 +29,19 @@ class ReasoningEngine:
         self,
         game_state: GameState,
         inquiry_type: InquiryType,
-        content: str
+        content: str,
+        active_buffs: Optional[Dict] = None
     ) -> Tuple[str, Dict]:
         """
         处理玩家的推理输入
+
+        active_buffs: 本次提问生效的能力增益（{"knowledge": True, ...}），由控制器 peek，成功后消耗
 
         返回: (AI回应, 状态更新信息)
         """
 
         if inquiry_type == InquiryType.QUESTION:
-            return await self._process_question(game_state, content)
+            return await self._process_question(game_state, content, active_buffs)
         elif inquiry_type == InquiryType.HYPOTHESIS:
             return await self._process_hypothesis(game_state, content)
         elif inquiry_type == InquiryType.VERIFICATION:
@@ -47,15 +51,16 @@ class ReasoningEngine:
 
     # ==================== 流式处理（边生成边推送主持人台词） ====================
 
-    async def process_inquiry_stream(self, game_state: GameState, inquiry_type: InquiryType, content: str):
+    async def process_inquiry_stream(self, game_state: GameState, inquiry_type: InquiryType, content: str, active_buffs: Optional[Dict] = None):
         """流式处理玩家的推理输入
 
         异步生成器：先 yield ("delta", 台词增量) 若干次，最后 yield ("final", (ai_response, state_updates))。
         LLM 输出格式：主持人台词在前，<<<SOUP_JSON>>> 标记后跟系统用JSON。
         JSON 解析失败抛 LLMError（上层重试，不消耗推理机会）。
+        active_buffs: 本次提问生效的能力增益（仅 QUESTION 使用），控制附加输出字段。
         """
         if inquiry_type == InquiryType.QUESTION:
-            prompt = self._build_question_stream_prompt(game_state, content)
+            prompt = self._build_question_stream_prompt(game_state, content, active_buffs)
         elif inquiry_type == InquiryType.HYPOTHESIS:
             prompt = self._build_hypothesis_stream_prompt(game_state, content)
         elif inquiry_type == InquiryType.VERIFICATION:
@@ -95,6 +100,14 @@ class ReasoningEngine:
                 answer = "否"
             print(f"[推理引擎] answer字段值: '{answer}'")
 
+            # 死亡断言二次核验：便宜模型在「死了 vs 被藏/带走/失踪」上易翻车，
+            # 答「是」时用独立核验调用逐字对照真相，未死亡则强制翻转为「否」
+            if answer == "是" and self._is_death_assertion(content):
+                verdict = await self._verify_death_claim(game_state, content)
+                print(f"[推理引擎] 死亡核验: {verdict or '(核验失败,维持原判定)'}")
+                if verdict == "未死亡":
+                    answer = "否"
+
             # 推理进度 = 玩家累计还原的真相百分比（truth_coverage），只进不退
             state_updates = {
                 "progress_delta": self._coverage_delta(game_state, data.get("truth_coverage")),
@@ -111,7 +124,8 @@ class ReasoningEngine:
             ai_response = self._format_question_response(
                 answer=answer,
                 hint="",
-                is_critical=state_updates["is_critical"]
+                is_critical=state_updates["is_critical"],
+                buff_data=self._collect_buff_fields(data, active_buffs)
             )
             yield ("final", (ai_response, state_updates))
 
@@ -152,6 +166,41 @@ class ReasoningEngine:
                 text = text[:i]
         return text.strip()
 
+    # 死亡类断言识别：这类问题最容易出现「死了 vs 被藏/带走/失踪」的判定矛盾
+    DEATH_PATTERN = re.compile(
+        r"(死了|死了吗|死了么|死没死|死没|是被杀|被杀|杀害|遇害|被害|自杀|他杀|"
+        r"身亡|去世|杀死|害死|毒死|勒死|谋杀|死于|尸)"
+    )
+
+    @classmethod
+    def _is_death_assertion(cls, question: str) -> bool:
+        """玩家提问是否涉及死亡状态断言（需要触发二次核验）"""
+        return bool(cls.DEATH_PATTERN.search(question or ""))
+
+    async def _verify_death_claim(self, game_state: GameState, question: str) -> str:
+        """死亡断言二次核验：强制先引用真相原文再下结论，防止凭问题里的字面复读。
+
+        返回 '死亡' / '未死亡'，调用失败或解析不出结论返回 ''（不推翻原判定）。
+        """
+        prompt = f"""核验任务（必须先引用原文，再下结论，不许凭印象猜测）。
+
+案件真相：
+{self._format_truth(game_state.case.truth)}
+
+玩家陈述：「{question}」
+
+第一步：从真相原文中逐字抄写与陈述中对象（人/动物）生死有关的一句原文；没有则写"原文未提及生死"。
+第二步：另起一行写 结论：死亡 或 结论：未死亡。
+规则：原文写明死亡（死了/遇害/尸体/杀害等）才是「死亡」；被藏匿、被带走、失踪、昏迷、离开都算「未死亡」。"""
+        try:
+            resp = await self.llm.generate(prompt, max_tokens=150, temperature=0.1)
+            text = (resp or "").strip()
+            # 只信「结论：」行；解析不出结论一律返回''维持原判定（保守，不误杀）
+            m = re.search(r"结论[：:]\s*(未死亡|死亡)", text)
+            return m.group(1) if m else ""
+        except LLMError:
+            return ""
+
     @staticmethod
     def _coverage_delta(game_state: GameState, raw_coverage) -> float:
         """把 LLM 估算的「累计真相还原度」换算成本次进度增量（只进不退）。
@@ -168,8 +217,9 @@ class ReasoningEngine:
         current = float(game_state.reasoning_progress or 0)
         return max(0.0, coverage - current)
 
-    def _build_question_stream_prompt(self, game_state: GameState, question: str) -> str:
+    def _build_question_stream_prompt(self, game_state: GameState, question: str, active_buffs: Optional[Dict] = None) -> str:
         context = self._build_reasoning_context(game_state)
+        buff_section = self._build_buff_instruction(active_buffs)
         return f"""
 你是一个海龟汤游戏的AI主持人。玩家正在推理案件。
 
@@ -184,7 +234,7 @@ class ReasoningEngine:
 玩家的身份：{game_state.user_identity}
 {context}
 玩家的提问："{question}"
-
+{buff_section}
 你的输出分两部分：
 
 第一部分（玩家可见的主持人台词）：
@@ -209,7 +259,58 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 - 五要素（谁/发生了什么/动机/手法/反转）基本拼齐才应接近 90-100
 - 只有玩家拼出真相的**新关键部分**时才明显提升；泛泛之问、重复提问、细枝末节不得提升
 - 当前累计还原度约 {game_state.reasoning_progress:.0f}%，新估值不得无故大幅偏离它
+
+判定自检（必须先在 reasoning 字段里完成，再写 answer）：
+① 把玩家的陈述拆成一条条事实断言（主语/状态/动作分开看）
+② 逐条对照「案件真相」原文：**全部断言都被真相支持才答「是」；任何一条不符即答「否」**
+③ 状态类断言逐字核验，绝不凭语感：
+   - 「死了」≠「被藏/被带走/失踪/离开」——真相里角色或动物只是被藏匿、带走、失踪，一律不能对"死了"答「是」
+   - 「自杀」≠「他杀」；「在自己家」≠「潜入别人家」；「A干的」≠「B干的」
+④ 玩家陈述只对了一半（人或地点或手法错一个）也是「否」——完整判定会在还原真相阶段给出
 """
+
+    @staticmethod
+    def _build_buff_instruction(active_buffs: Optional[Dict]) -> str:
+        """构造能力增益的附加输出指令（未激活时返回空串，prompt 保持不变）"""
+        if not active_buffs:
+            return ""
+
+        field_lines = []
+        if active_buffs.get("knowledge"):
+            field_lines.append('- "knowledge_hint": 【📖 知识提示】用一句话补充一条与本案真相相关的背景知识，帮玩家理解案情')
+        if active_buffs.get("association"):
+            field_lines.append('- "association_link": 【🔗 联想点拨】用一句话点拨两条已解锁线索之间的关联')
+        if active_buffs.get("logic"):
+            field_lines.append('- "logic_deduction": 【🧠 逻辑推演】用一句话给出排除式判断（基于已问出的事实排除某种可能性）')
+        if active_buffs.get("insight"):
+            field_lines.append('- "insight_detail": 【🔍 洞察细节】用一句话补充一个尚未明说的关键细节（不得直接道破核心真相）')
+
+        if not field_lines:
+            return ""
+
+        return f"""
+【能力增益生效】玩家本次提问携带能力增益，你必须在下方 JSON 中额外输出以下字段
+（每字段一句话、玩家可见，语气与主持人一致；只描述引导信息，绝不能直接道破真相核心；
+ 未列出的增益字段不要输出）：
+{chr(10).join(field_lines)}
+"""
+
+    @staticmethod
+    def _collect_buff_fields(data: Dict, active_buffs: Optional[Dict]) -> Optional[Dict]:
+        """从 LLM 返回的 JSON 中收集已激活增益的附加内容（无激活或全空返回 None）"""
+        if not active_buffs:
+            return None
+        key_map = {
+            "knowledge": "knowledge_hint",
+            "association": "association_link",
+            "logic": "logic_deduction",
+            "insight": "insight_detail",
+        }
+        out = {}
+        for buff_type, key in key_map.items():
+            if active_buffs.get(buff_type):
+                out[key] = str(data.get(key) or "").strip()
+        return out or None
 
     def _build_hypothesis_stream_prompt(self, game_state: GameState, hypothesis: str) -> str:
         return f"""
@@ -288,12 +389,14 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
     async def _process_question(
         self,
         game_state: GameState,
-        question: str
+        question: str,
+        active_buffs: Optional[Dict] = None
     ) -> Tuple[str, Dict]:
         """处理玩家提问"""
 
         # 构建推理上下文
         context = self._build_reasoning_context(game_state)
+        buff_section = self._build_buff_instruction(active_buffs)
 
         prompt = f"""
 你是一个海龟汤游戏的AI主持人。玩家正在推理案件。
@@ -309,7 +412,7 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 玩家的身份：{game_state.user_identity}
 
 玩家的提问："{question}"
-
+{buff_section}
 你的任务：
 1. 根据案件真相，判断这个问题的答案
 2. **answer字段必须只能是"是"或"否"两种之一（严格二元）：**
@@ -337,17 +440,38 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 - 方向正确但不够深入：quality_score 60-79
 - 相关但偏离重点：quality_score 40-59
 - 无关问题：quality_score 0-39
+
+判定自检（必须先在 reasoning 字段里完成，再写 answer）：
+① 把玩家的陈述拆成一条条事实断言（主语/状态/动作分开看）
+② 逐条对照「案件真相」原文：**全部断言都被真相支持才答「是」；任何一条不符即答「否」**
+③ 状态类断言逐字核验，绝不凭语感：
+   - 「死了」≠「被藏/被带走/失踪/离开」——真相里角色或动物只是被藏匿、带走、失踪，一律不能对"死了"答「是」
+   - 「自杀」≠「他杀」；「在自己家」≠「潜入别人家」；「A干的」≠「B干的」
+④ 玩家陈述只对了一半（人或地点或手法错一个）也是「否」——完整判定会在还原真相阶段给出
 """
 
         response = await self.llm.generate(prompt)
         analysis = self._parse_json_response(response)
 
-        print(f"[推理引擎] answer字段值: '{analysis.get('answer', '')}'")
+        # 二元判定保险：非"是"一律按"否"处理（判定反馈只能是或否）
+        answer = str(analysis.get("answer") or "").strip()
+        if answer not in ("是", "否"):
+            answer = "否"
+        analysis["answer"] = answer
+        print(f"[推理引擎] answer字段值: '{answer}'")
+
+        # 死亡断言二次核验：答「是」时逐字对照真相复核，未死亡则强制翻转
+        if answer == "是" and self._is_death_assertion(question):
+            verdict = await self._verify_death_claim(game_state, question)
+            print(f"[推理引擎] 死亡核验: {verdict or '(核验失败,维持原判定)'}")
+            if verdict == "未死亡":
+                answer = "否"
+                analysis["answer"] = answer
 
         # 根据分析结果更新游戏状态（进度=累计真相还原度，只进不退）
         state_updates = {
             "progress_delta": self._coverage_delta(game_state, analysis.get("truth_coverage")),
-            "revealed_info": [analysis.get("answer", "")],
+            "revealed_info": [answer],
             "is_critical": analysis.get("is_critical", False)
         }
 
@@ -360,9 +484,10 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 
         # 构建主持人风格的回应
         ai_response = self._format_question_response(
-            answer=analysis.get("answer", ""),
+            answer=answer,
             hint=analysis.get("hint", ""),
-            is_critical=analysis.get("is_critical", False)
+            is_critical=analysis.get("is_critical", False),
+            buff_data=self._collect_buff_fields(analysis, active_buffs)
         )
 
         return ai_response, state_updates
@@ -580,9 +705,10 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
         self,
         answer: str,
         hint: str,
-        is_critical: bool
+        is_critical: bool,
+        buff_data: Optional[Dict] = None
     ) -> str:
-        """格式化提问回应"""
+        """格式化提问回应（含能力增益附加内容）"""
 
         import random
 
@@ -595,6 +721,20 @@ truth_coverage 判断标准（0-100 整数，推理进度条的依据）：
 
         if hint:
             response += f"\n\n{hint}"
+
+        # 能力增益附加内容（仅列出 LLM 实际给出了内容的项）
+        if buff_data:
+            extras = []
+            if buff_data.get("knowledge_hint"):
+                extras.append(f"💡 知识提示：{buff_data['knowledge_hint']}")
+            if buff_data.get("association_link"):
+                extras.append(f"🔗 联想点拨：{buff_data['association_link']}")
+            if buff_data.get("logic_deduction"):
+                extras.append(f"🧠 逻辑推演：{buff_data['logic_deduction']}")
+            if buff_data.get("insight_detail"):
+                extras.append(f"🔍 洞察细节：{buff_data['insight_detail']}")
+            if extras:
+                response += "\n\n" + "\n\n".join(extras)
 
         return response
 
