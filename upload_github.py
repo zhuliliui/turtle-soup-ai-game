@@ -43,6 +43,8 @@ def is_ignored(rel_path: str) -> bool:
     name = parts[-1]
     if name in IGNORE_FILES or name.endswith(IGNORE_SUFFIX):
         return True
+    if name.startswith(".workbuddy"):   # 会话/调试残留（cookie、临时文件）不入库
+        return True
     if ".bak-" in name or ".bak." in name:
         return True
     if name == ".env" or name.endswith(".env"):
