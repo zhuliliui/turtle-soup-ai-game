@@ -2651,8 +2651,30 @@
             }
         }
 
+        // 新对局/恢复对局前，清干净上一局残留的界面状态：
+        // 推理历史、被锁定的输入框、被隐藏的操作按钮、上局的身份行动缓存。
+        // 不清的话：「再来一局」生成新案件后，聊天区还是上一局的内容、输入框仍是禁用态没法提问。
+        function resetGameUI() {
+            const historyDiv = document.getElementById('inquiryHistory');
+            if (historyDiv) {
+                historyDiv.innerHTML =
+                    '<p id="historyPlaceholder" style="color: #7c8b7c; font-size: 14px; text-align: center;">你的推理对话将显示在这里...</p>';
+            }
+            const input = document.getElementById('actionInput');
+            if (input) { input.disabled = false; input.value = ''; }
+            // 恢复主操作栏按钮（learningBtn / restartBtn 随后按模式与终局状态单独控制）
+            document.querySelectorAll('.action-buttons [data-action-btn]').forEach(btn => btn.classList.remove('hidden'));
+            const learningBtn = document.getElementById('learningBtn');
+            if (learningBtn) learningBtn.classList.add('hidden');
+            const restartBtn = document.getElementById('restartBtn');
+            if (restartBtn) restartBtn.classList.add('hidden');
+            window._identityActions = [];
+        }
+
         // 显示案件信息
         function displayCaseInfo(data) {
+            // 无论新开局还是恢复上局，先重置上一局遗留的界面状态（恢复上局随后会重放对话流水）
+            resetGameUI();
             const gameState = data.game_state;
             const case_info = gameState.case;
 
@@ -2872,15 +2894,11 @@
             await sendAction('hypothesis');
         }
 
-        // 还原真相
+        // 还原真相：不弹确认框，直接提交验证，AI 在对话里直接给出判定结果
         async function verifyTruth() {
             const input = document.getElementById('actionInput').value.trim();
             if (!input) {
-                showNotification('请输入你还原的真相', 'error');
-                return;
-            }
-
-            if (!confirm('确定要提交真相验证吗？这将消耗 1 次验证机会。\n\n还原度 >60% 即可破案（升 1 级），>80% 为完美还原（升 2 级）。')) {
+                showNotification('请先在输入框写下你还原的真相，再点「还原真相」', 'error');
                 return;
             }
 
