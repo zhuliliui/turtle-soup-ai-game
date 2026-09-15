@@ -544,38 +544,29 @@ class GameController:
                 "game_state": self._serialize_game_state()
             }
         else:
-            # 验证失败：带还原度评分反馈（说对了多少、错在哪、漏了什么）
+            # 验证失败：任务失败，立即终局（还原真相是决胜一击，失败即失败——
+            # 公布完整真相与谜团揭秘、记败场并降级，前端 endGameUI 引导回首页）
+            self.game_state.game_over = True
             failure_message = self.host.verification_incorrect(
                 truth_claim,
                 verification_result.get("errors", []),
-                self.game_state.verification_chances,
+                0,
                 verification_result=verification_result
             )
+            game_over_message = await self._generate_game_over_message()
+            level_note = self._record_profile_result(solved=False)
+            if level_note:
+                game_over_message += "\n\n" + level_note
 
-            self._append_log("ai", failure_message)
-
-            # 如果没有验证机会且推理次数也用完了
-            if self.game_state.verification_chances <= 0 and self.game_state.remaining_turns <= 0:
-                self.game_state.game_over = True
-                game_over_message = await self._generate_game_over_message()
-                level_note = self._record_profile_result(solved=False)
-                if level_note:
-                    game_over_message += "\n\n" + level_note
-                self._append_log("ai", game_over_message)
-                self._save_to_disk()
-
-                return {
-                    "success": False,
-                    "message": failure_message + "\n\n" + game_over_message,
-                    "game_over": True,
-                    "game_state": self._serialize_game_state()
-                }
-
+            self._append_log("ai", failure_message + "\n\n" + game_over_message)
             self._save_to_disk()
+
             return {
                 "success": False,
-                "message": failure_message,
-                "errors": [],
+                "message": failure_message + "\n\n" + game_over_message,
+                "game_over": True,
+                "game_over_message": game_over_message,
+                "case_solved": False,
                 "game_state": self._serialize_game_state()
             }
 
