@@ -82,6 +82,41 @@ def _callback_uri(request: Request) -> str:
 _pending_states: Dict[str, dict] = {}   # state -> {"created_at", "from_origin"}
 _sessions: Dict[str, dict] = {}         # session_id -> {"access_token","expires_at","user","mock"}
 
+# 会话持久化：重启（本地重启/云端重新部署）后 1 小时 TTL 内的用户会话不蒸发，免去重新登录。
+# 注意文件含 access_token，已在 upload_github.py IGNORE_FILES 中排除，不入公开仓库。
+_SESSIONS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "zhihu_sessions.json")
+
+
+def _load_sessions():
+    """启动时从磁盘恢复会话（自动丢弃已过期条目）"""
+    try:
+        with open(_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    now = time.time()
+    for sid, sess in (data or {}).items():
+        try:
+            if isinstance(sess, dict) and float(sess.get("expires_at", 0)) > now:
+                _sessions[sid] = sess
+        except (TypeError, ValueError):
+            continue
+
+
+def _persist_sessions():
+    """会话落盘（create/logout 时调用；顺带清除已过期条目）"""
+    now = time.time()
+    snapshot = {s: v for s, v in _sessions.items() if v.get("expires_at", 0) > now}
+    try:
+        os.makedirs(os.path.dirname(_SESSIONS_FILE), exist_ok=True)
+        with open(_SESSIONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, ensure_ascii=False)
+    except OSError as e:
+        print(f"[知乎] 会话落盘失败（内存内会话不受影响）: {e}")
+
+
+_load_sessions()
+
 
 def _new_state(from_origin: str) -> str:
     _cleanup_states()
@@ -109,6 +144,7 @@ def _create_session(access_token: str, expires_in: int, user: dict, mock: bool) 
         "user": user,
         "mock": mock,
     }
+    _persist_sessions()
     return session_id
 
 
@@ -352,6 +388,7 @@ async def zhihu_logout(request: Request):
     sid = request.cookies.get(COOKIE_NAME)
     if sid:
         _sessions.pop(sid, None)
+        _persist_sessions()
     resp = JSONResponse({"success": True})
     resp.delete_cookie(COOKIE_NAME)
     return resp
