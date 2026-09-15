@@ -1286,35 +1286,79 @@
             flex-shrink: 0;
         }
 
-        /* 一句话开局弹窗专用 */
+        /* 一句话开局弹窗（仿学习模式：奶油纸张卡片 + 楷体标题 + 橙色确认按钮） */
+        #sentenceDialog {
+            background: rgba(246, 249, 236, 0.82);
+            backdrop-filter: blur(8px);
+        }
         #sentenceDialog .modal-content {
-            padding: 26px 26px 22px;
+            max-width: 500px;
             max-height: 92vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0;
+        }
+        #sentenceDialog .sentence-sheet {
+            position: relative;
+            padding: 26px 30px 26px;
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at 90% 6%, rgba(150, 200, 120, 0.16) 0 6px, transparent 7px),
+                radial-gradient(circle at 8% 94%, rgba(212, 168, 60, 0.16) 0 6px, transparent 7px),
+                linear-gradient(165deg, #fbfdf2 0%, #f7f9e8 60%, #f2f5dd 100%);
+            border: 1.5px solid rgba(160, 190, 130, 0.5);
+            box-shadow: 0 12px 40px rgba(60, 90, 45, 0.16), inset 0 1px 0 rgba(255,255,255,0.9);
+            text-align: left;
+        }
+        #sentenceDialog .sentence-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        #sentenceDialog .sentence-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: 'KaiTi', 'STKaiti', '楷体', 'Kaiti SC', cursive;
+            font-size: 27px;
+            font-weight: 700;
+            color: #1e4d18;
+            letter-spacing: 3px;
+        }
+        #sentenceDialog .sentence-title-ico { width: 32px; height: 32px; display: inline-flex; flex-shrink: 0; }
+        #sentenceDialog .sentence-title-ico svg { width: 100%; height: 100%; }
+        #sentenceDialog .dlg-tip {
+            color: #6d7a5e;
+            font-size: 13px;
+            line-height: 1.65;
+            margin: 0 0 14px;
         }
         #sentenceDialog .form-textarea {
-            min-height: 76px;
-            font-size: 14.5px;
-            line-height: 1.6;
-        }
-        #sentenceDialog .dlg-tip {
-            color: #5c6e5c;
-            font-size: 13px;
-            margin-bottom: 10px;
-            line-height: 1.55;
+            min-height: 96px;
+            font-size: 15px;
+            line-height: 1.7;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid rgba(160, 190, 130, 0.55);
+            border-radius: 14px;
         }
         #sentenceDialog .dlg-examples {
             margin-top: 12px;
-            padding: 10px 12px;
-            background: rgba(102,187,106,0.10);
-            border: 1px solid #c8dcc8;
-            border-radius: 10px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1.5px dashed #a9d07f;
+            border-radius: 14px;
             font-size: 12.5px;
             color: #5c6e5c;
-            line-height: 1.6;
+            line-height: 1.7;
         }
         #sentenceDialog .dlg-examples .ex-title {
             font-weight: 700;
-            color: #2e7d32;
+            color: #2f5f26;
             margin-bottom: 3px;
         }
         #sentenceDialog .dlg-examples .ex-item {
@@ -1323,11 +1367,9 @@
             transition: color .15s;
         }
         #sentenceDialog .dlg-examples .ex-item:hover {
-            color: #2e7d32;
+            color: #2f6b28;
             text-decoration: underline dotted;
         }
-        #sentenceDialog .btn-wordart { margin-top: 14px; }
-        #sentenceDialog .btn-wordart .start-wordart { width: 158px; }
         .sentence-preview {
             margin-top: 10px;
             padding: 11px 14px;
@@ -2083,27 +2125,37 @@
         </div>
     </div>
 
-    <!-- 一句话开局：输入弹窗 -->
+    <!-- 一句话开局：输入弹窗（仿学习模式：奶油纸张卡片 + 楷体标题 + 橙色确认） -->
     <div id="sentenceDialog" class="modal">
-        <div class="modal-content" style="max-width: 520px;">
-            <div class="start-screen">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                    <h1 class="start-title" style="font-size: 22px; margin: 0;">🎭 一句话开局</h1>
-                    <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()" style="font-size: 13px;">✕ 关闭</button>
+        <div class="modal-content">
+            <div class="sentence-sheet">
+                <div class="sentence-head">
+                    <div class="sentence-title">
+                        <span class="sentence-title-ico" aria-hidden="true"><svg viewBox="0 0 48 48">
+                            <path d="M8 12.5c5-2.4 9.5-2.4 13.8 0v22c-4.3-2.4-8.8-2.4-13.8 0z" fill="#fffdf3" stroke="#2f6b28" stroke-width="2.1" stroke-linejoin="round"/>
+                            <path d="M40 12.5c-5-2.4-9.5-2.4-13.8 0v22c4.3-2.4 8.8-2.4 13.8 0z" fill="#e6f0cf" stroke="#2f6b28" stroke-width="2.1" stroke-linejoin="round"/>
+                            <path d="M24 12.5v22" stroke="#2f6b28" stroke-width="2.1" stroke-linecap="round"/>
+                            <path d="M31.5 7.5l1.5 3 3.2.5-2.3 2.3.5 3.2-2.9-1.6-2.9 1.6.5-3.2-2.3-2.3 3.2-.5z" fill="#f2b93c" stroke="#8a5a12" stroke-width="1.5" stroke-linejoin="round"/>
+                        </svg></span>
+                        一句话开局
+                    </div>
+                    <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()">✕ 关闭</button>
                 </div>
                 <p class="dlg-tip">用一句话描述身份和事件，AI 据此生成专属汤面（可只写身份）。</p>
                 <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：我是一个学生　或：小明昨晚失踪了。我是他的老师" maxlength="200" rows="3" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                    <span id="sentenceDialogCount" style="color: #7c8b7c; font-size: 12px;">0 / 200</span>
-                    <span style="color: #7c8b7c; font-size: 12px;">回车换行 · Ctrl+Enter 确认</span>
-                </div>
                 <div class="dlg-examples">
                     <div class="ex-title">💡 示例（点一下直接填入）</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">· 我是一个学生</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">· 小明昨晚失踪了。我是他的老师</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">· 我在医院醒来，记不起自己是谁</div>
                 </div>
-                <button type="button" class="pill-btn btn-wordart" onclick="confirmSentence()" style="margin-top: 18px;"><img src="start.png" alt="开始" class="start-wordart"></button>
+                <div class="learn-foot">
+                    <span id="sentenceDialogCount" class="learn-count">0 / 200 · Ctrl+Enter 确认</span>
+                    <button type="button" class="learn-confirm" onclick="confirmSentence()">
+                        <span class="lcb-label">开始</span>
+                        <span class="lcb-go" aria-hidden="true">→</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
