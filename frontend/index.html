@@ -437,9 +437,11 @@
 
         .action-buttons {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;      /* 用户要求：所有按钮固定一排，不再换行 */
+            overflow-x: auto;       /* 极窄时横向滑动兜底，按钮绝不挤到第二行 */
+            padding-bottom: 2px;
         }
 
         .btn {
@@ -452,7 +454,12 @@
             cursor: pointer;
             transition: all 0.2s ease;
             letter-spacing: 2px;
+            flex: 0 1 auto;        /* 允许在拥挤时轻微收缩 */
+            white-space: nowrap;   /* 按钮文字永不折行 */
         }
+
+        /* 操作栏按钮紧凑化：保证 提问/猜想/还原真相/询问他人/学习挑战 五枚一排放得下 */
+        .action-buttons .btn { padding: 10px 16px; letter-spacing: 1px; }
 
         .btn:hover { transform: translateY(-2px); }
         .btn:active { transform: translateY(0); }
@@ -2502,6 +2509,7 @@
 
         // ==================== 开局方式（二选一） ====================
         let startMode = 'sentence';       // 'sentence' 一句话开局 | 'story' 知乎故事改编
+        let lastStartSource = 'sentence'; // 最后一次实际输入的开局素材来源（'sentence' | 'story'）——开始游戏时最后一个输入的生效
         let zhihuPending = null;          // 已选故事 {premise, attribution, title}
 
         function switchStartMode(m) {
@@ -2532,20 +2540,25 @@
                 return;
             }
 
-            // 按开局方式取 premise：一句话输入 / 已选知乎故事
-            let sentence;
-            if (startMode === 'story') {
-                if (!zhihuPending) {
-                    showNotification('请先点「选择一个知乎故事」挑选故事', 'error');
-                    return;
-                }
+            // 按开局方式取 premise：最后一个输入的生效；该来源为空则自动回退另一个（只点开弹窗看看不算输入）
+            const sentenceText = document.getElementById('quickSentence').value.trim();
+            let sentence = null;
+
+            if (lastStartSource === 'story' && zhihuPending) {
+                startMode = 'story';
                 sentence = zhihuPending.premise;
-            } else {
-                sentence = document.getElementById('quickSentence').value.trim();
-                if (!sentence) {
-                    showNotification('请输入一句话开局，例如：我是一个学生', 'error');
-                    return;
-                }
+            } else if (sentenceText) {
+                startMode = 'sentence';
+                sentence = sentenceText;
+            } else if (zhihuPending) {
+                startMode = 'story';
+                sentence = zhihuPending.premise;
+                showNotification('未输入一句话，已用已选故事《' + zhihuPending.title + '》开局', 'info');
+            }
+
+            if (!sentence) {
+                showNotification('请先点「一句话开局」输入，或选一个知乎故事/热点新闻', 'error');
+                return;
             }
 
             const mode = document.getElementById('modeSelect').value;
@@ -3509,6 +3522,7 @@
             }
             // 同步到隐藏的 quickSentence（startGame 读取的数据源）
             document.getElementById('quickSentence').value = v;
+            lastStartSource = 'sentence';  // 记录：最后一次输入的是一句话
             // 主面板显示预览
             const preview = document.getElementById('sentencePreview');
             const text = document.getElementById('sentencePreviewText');
@@ -3736,6 +3750,7 @@
                 const data = await resp.json();
                 // 选好故事待开局：存 premise + 显示归属，由用户点「开始游戏」触发
                 zhihuPending = { premise: data.premise, attribution: data.attribution, title: data.title };
+                lastStartSource = 'story';  // 记录：最后一次输入的是知乎故事
                 const attr = document.getElementById('zhihuAttribution');
                 attr.textContent = `📖 已选《${data.title}》· 点「开始游戏」开局` + (data.author_name ? ` · 作者 ${data.author_name}` : '');
                 attr.classList.remove('hidden');
@@ -3809,6 +3824,7 @@
                 }
                 const data = await resp.json();
                 zhihuPending = { premise: data.premise, attribution: data.attribution, title: data.title };
+                lastStartSource = 'story';  // 记录：最后一次输入的是热点新闻
                 const attr = document.getElementById('zhihuAttribution');
                 attr.textContent = `📰 已选新闻《${data.title}》· 点「开始游戏」开局`;
                 attr.classList.remove('hidden');
