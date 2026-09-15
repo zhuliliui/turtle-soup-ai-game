@@ -218,17 +218,24 @@ async def zhihu_login(request: Request, from_origin: Optional[str] = None):
     if origin and not origin.startswith(("http://", "https://")):
         origin = ""
 
-    # 防呆：redirect_uri 登记在哪个域，真实登录就必须从哪个域的页面发起。
-    # state 存本进程内存——从别的域（如本地 localhost）发起时，知乎会把授权码
-    # 回调到登记域，那边没有对应 state，必然"state 无效"。提前拦截给出明确提示。
+    # 防呆：state 存本进程内存，而知乎只会把授权码回调到「登记域」。
+    # 若登录请求打到了本地后端（localhost/127.0.0.1），state 建在本地、回调落在
+    # 登记域，那边没有对应 state，必然「state 无效」——提前拦截给出明确提示。
+    # 注意：不能拿 request.base_url 与登记域做全等比较！云端部署经过反向代理，
+    # 后端看到的 Host 是沙箱内部域名（如 8000-xxx.e2b.sh3.sandbox...），
+    # 全等比较会误杀正常云端登录（实测踩坑）。只有「接收方是本地」才是
+    # 可靠可判的坏情况：本地后端永远等不到登记在云端的回调。
     cfg_redirect = cfg["redirect_uri"]
     if cfg_redirect:
         registered = urllib.parse.urlsplit(cfg_redirect)
         current = urllib.parse.urlsplit(str(request.base_url))
-        registered_origin = f"{registered.scheme or 'https'}://{registered.netloc}".lower().replace("127.0.0.1", "localhost")
-        current_origin = f"{current.scheme or 'http'}://{current.netloc}".lower().replace("127.0.0.1", "localhost")
-        if registered_origin and current_origin != registered_origin:
-            reason = f"知乎登录请在正式站点发起：{registered_origin}（当前页面 {current_origin} 的后端拿不到回调）"
+        registered_host = (registered.hostname or "").lower()
+        current_host = (current.hostname or "").lower()
+        registered_is_local = registered_host in ("localhost", "127.0.0.1")
+        current_is_local = current_host in ("localhost", "127.0.0.1")
+        if current_is_local and not registered_is_local:
+            registered_origin = f"{registered.scheme or 'https'}://{registered.netloc}"
+            reason = f"知乎登录请在正式站点发起：{registered_origin}（当前为本地页面 {current.scheme or 'http'}://{current.netloc} 的后端，拿不到回调）"
             if origin:
                 sep = "&" if "?" in origin else "?"
                 return RedirectResponse(
