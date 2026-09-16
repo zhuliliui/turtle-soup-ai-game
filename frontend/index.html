@@ -2149,13 +2149,14 @@
                     </div>
                     <button type="button" class="pill-btn-ghost" onclick="closeSentenceDialog()">✕ 关闭</button>
                 </div>
-                <p class="dlg-tip">用一句话描述身份和事件，AI 据此生成专属汤面（可只写身份）。</p>
+                <p class="dlg-tip">用一句话描述身份和事件，AI 据此生成专属汤面（可只写身份）。第一人称经历也行——哪怕当事人已身亡，也会以鬼魂视角开局查案。</p>
                 <textarea id="sentenceDialogInput" class="form-textarea" placeholder="例如：我是一个学生&#10;或：小明昨晚失踪了。我是他的老师" maxlength="200" rows="3" oninput="updateSentenceCount()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();confirmSentence();}"></textarea>
                 <div class="dlg-examples">
                     <div class="ex-title">💡 示例（点一下直接填入）</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">我是一个学生</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">小明昨晚失踪了。我是他的老师</div>
                     <div class="ex-item" onclick="fillSentenceExample(this)">我在医院醒来，记不起自己是谁</div>
+                    <div class="ex-item" onclick="fillSentenceExample(this)">我是坠楼身亡的女孩，想查出真相</div>
                 </div>
                 <div class="learn-foot">
                     <span id="sentenceDialogCount" class="learn-count">0 / 200 · Ctrl+Enter 确认</span>
